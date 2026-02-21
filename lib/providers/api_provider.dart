@@ -84,7 +84,8 @@ class ApiProvider with ChangeNotifier {
   Future<void> init() async {
     _dio = Dio(
       BaseOptions(
-        baseUrl: "http://192.168.0.114:1000",
+         baseUrl: "https://qkicsbackend.matchb.online",
+      //baseUrl: "http://192.168.0.123:8000", 
         connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 15),
         headers: {
@@ -203,26 +204,35 @@ class ApiProvider with ChangeNotifier {
   }
 
   Future<bool> _performRefresh() async {
-    try {
-      // Use a fresh Dio instance or dedicated call to avoid interceptor recursion if needed
-      // However, since we check _isRefreshing at the start of _refreshAccessToken,
-      // recursive calls to refresh will just return the existing completer.
-      final response = await _dio.post("/api/v1/auth/token/refresh/");
+  try {
+    final freshDio = Dio(
+      BaseOptions(
+        baseUrl: _dio.options.baseUrl,
+        headers: Map<String, dynamic>.from(_dio.options.headers),
+        connectTimeout: _dio.options.connectTimeout,
+        receiveTimeout: _dio.options.receiveTimeout,
+      ),
+    );
 
-      if (response.statusCode == 200) {
-        _accessToken = response.data['access'] as String;
-        await _storage.write(key: 'access_token', value: _accessToken);
-        _currentUser = null; // Force reload user on next access
-        notifyListeners();
-        return true;
-      }
-    } on DioException catch (e) {
-      debugPrint("Token refresh failed: ${e.response?.data}");
-    } catch (e) {
-      debugPrint("Refresh error: $e");
+    freshDio.interceptors.add(CookieManager(_cookieJar!));
+
+    final response =
+        await freshDio.post("/api/v1/auth/token/refresh/");
+
+    if (response.statusCode == 200) {
+      _accessToken = response.data['access'] as String;
+      await _storage.write(key: 'access_token', value: _accessToken);
+
+      notifyListeners();
+      return true;
     }
-    return false;
+  } catch (e) {
+    debugPrint("Refresh failed: $e");
   }
+
+  return false;
+}
+
 
   // Login – backend sets HTTP-Only refresh cookie
   Future<bool> login(String username, String password) async {
@@ -734,7 +744,8 @@ class ApiProvider with ChangeNotifier {
         data: formData ?? data,
       );
 
-      return response.statusCode == 201;
+     return true;
+
     } catch (e) {
       debugPrint("Create post error: $e");
       return false;
@@ -821,7 +832,8 @@ class ApiProvider with ChangeNotifier {
         data: formData ?? data,
       );
 
-      return response.statusCode == 200;
+      return true;
+
     } catch (e) {
       debugPrint("Update post error: $e");
       return false;
@@ -848,24 +860,34 @@ class ApiProvider with ChangeNotifier {
   /// DELETE POST
   /// DELETE /api/v1/community/posts/<post_id>/
   Future<bool> deletePost(int postId) async {
-    try {
-      final response = await _dio.delete('/api/v1/community/posts/$postId/');
+  try {
+    final response = await _dio.delete(
+      '/api/v1/community/posts/$postId/',
+    );
 
-      if (response.statusCode == 204 || response.statusCode == 200) {
-        // Successfully deleted
-        return true;
-      } else {
-        debugPrint("Delete failed: ${response.statusCode} ${response.data}");
-        return false;
-      }
-    } on DioException catch (e) {
-      debugPrint("Delete post error: ${e.response?.data ?? e.message}");
-      return false;
-    } catch (e) {
-      debugPrint("Unexpected delete error: $e");
+    if (response.statusCode == 204 || response.statusCode == 200) {
+      debugPrint("Post deleted successfully: ${response.statusCode}");
+
+      // 🔥 REMOVE FROM LOCAL LIST
+      _posts.removeWhere((post) => post.id == postId);
+
+      // 🔥 UPDATE UI
+      notifyListeners();
+
+      return true;
+    } else {
+      debugPrint("Delete failed: ${response.statusCode} ${response.data}");
       return false;
     }
+  } on DioException catch (e) {
+    debugPrint("Delete post error: ${e.response?.data ?? e.message}");
+    return false;
+  } catch (e) {
+    debugPrint("Unexpected delete error: $e");
+    return false;
   }
+}
+
 
   Future<Map<String, dynamic>?> fetchEntrepreneurProfile() async {
     try {

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:q_kics/booking/services/razorpay_service.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../providers/subscription_provider.dart';
@@ -15,15 +17,78 @@ class SubscriptionPlansPage extends StatefulWidget {
 
 class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
   String? _selectedPlanUuid;
-
+late RazorpayService _razorpayService;
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<SubscriptionProvider>().fetchPlans();
-    });
-  }
+void initState() {
+  super.initState();
 
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    context.read<SubscriptionProvider>().fetchPlans();
+  });
+
+  _razorpayService = RazorpayService(
+    onSuccess: _handlePaymentSuccess,
+    onFailure: _handlePaymentFailure,
+    onExternalWallet: _handleExternalWallet,
+  );
+}
+@override
+void dispose() {
+  _razorpayService.dispose();
+  super.dispose();
+}
+
+void _startPayment(SubscriptionPlan plan) {
+  HapticFeedback.mediumImpact();
+
+  _razorpayService.openCheckout(
+    amount: plan.price.toDouble(),
+    name: "Q-KICS Subscription",
+    description: "${plan.name} Plan",
+    contact: "9999999999", // TODO: Replace with user's actual contact
+    email: "user@email.com", // TODO: Replace with logged user email
+    bookingId: plan.uuid,
+  );
+}
+
+Future<void> _handlePaymentSuccess(
+    PaymentSuccessResponse response) async {
+
+  final provider = context.read<SubscriptionProvider>();
+
+  final selectedPlan = provider.plans.firstWhere(
+    (p) => p.uuid == _selectedPlanUuid,
+  );
+
+  final success = await provider.subscribe(selectedPlan.uuid);
+
+  if (!mounted) return;
+
+  if (success) {
+    _showSuccess(selectedPlan.name);
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(provider.error ?? "Subscription failed")),
+    );
+  }
+}
+void _handlePaymentFailure(PaymentFailureResponse response) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        "Payment Failed: ${response.message ?? "Try again"}",
+      ),
+    ),
+  );
+}
+
+void _handleExternalWallet(ExternalWalletResponse response) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text("External Wallet: ${response.walletName}"),
+    ),
+  );
+}
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<SubscriptionProvider>();
@@ -197,8 +262,8 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
             width: 160,
             child: ElevatedButton(
               onPressed: provider.isLoading
-                  ? null
-                  : () => _handleSubscribe(plan),
+    ? null
+    : () => _startPayment(plan),
               style: ElevatedButton.styleFrom(
                 backgroundColor: cs.primary,
                 shape: RoundedRectangleBorder(
@@ -483,7 +548,7 @@ class _PlanCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
+      ), 
     );
   }
 

@@ -19,13 +19,16 @@ class _KnowledgeHubPageState extends State<KnowledgeHubPage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<DocumentProvider>().fetchDownloadHistory();
-    });
-  }
+ @override
+void initState() {
+  super.initState();
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    final provider = context.read<DocumentProvider>();
+
+    provider.fetchDocuments();        // 🔥 ADD THIS
+    provider.fetchDownloadHistory();  // existing
+  });
+}
 
   @override
   Widget build(BuildContext context) {

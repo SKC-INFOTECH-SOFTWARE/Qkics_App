@@ -18,7 +18,9 @@ class ChatWebSocketService {
     required Function(dynamic) onError,
     required VoidCallback onDone,
   }) {
-    final wsUrl = "ws://192.168.0.114:1000/ws/chat/$roomId/?token=$token";
+    final wsUrl = "wss://qkicsbackend.matchb.online/ws/chat/$roomId/?token=$token";
+
+    print("Connecting to WebSocket token: $token");
 
     try {
       _channel = IOWebSocketChannel.connect(Uri.parse(wsUrl));

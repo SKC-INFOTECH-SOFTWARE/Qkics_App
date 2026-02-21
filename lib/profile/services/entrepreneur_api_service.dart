@@ -21,11 +21,15 @@ class EntrepreneurApiService {
   }
 
   Future<List<EntrepreneurProfile>> getAllEntrepreneurs() async {
-    final res = await dio.get('/api/v1/entrepreneurs/');
-    return (res.data as List)
-        .map((e) => EntrepreneurProfile.fromJson(e))
-        .toList();
-  }
+  final res = await dio.get('/api/v1/entrepreneurs/');
+
+  final data = res.data as Map<String, dynamic>;
+  final List<dynamic> results = data['results'];
+
+  return results
+      .map((e) => EntrepreneurProfile.fromJson(e as Map<String, dynamic>))
+      .toList();
+}
 
   // ================= UPDATE =================
   Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> data) async {

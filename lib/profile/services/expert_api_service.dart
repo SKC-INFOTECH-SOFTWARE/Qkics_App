@@ -20,10 +20,16 @@ class ExpertApiService {
     return res.data;
   }
 
-  Future<List<ExpertProfile>> getAllExperts() async {
-    final res = await dio.get('/api/v1/experts/');
-    return (res.data as List).map((e) => ExpertProfile.fromJson(e)).toList();
-  }
+Future<List<ExpertProfile>> getAllExperts() async {
+  final res = await dio.get('/api/v1/experts/');
+
+  final data = res.data as Map<String, dynamic>;
+  final List<dynamic> results = data['results'];
+
+  return results
+      .map((e) => ExpertProfile.fromJson(e as Map<String, dynamic>))
+      .toList();
+}
 
   Future<void> submitForReview(String note) async {
     await dio.post('/api/v1/experts/me/submit/', data: {"note": note});

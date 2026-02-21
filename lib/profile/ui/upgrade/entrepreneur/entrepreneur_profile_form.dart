@@ -19,7 +19,7 @@ class _EntrepreneurProfileFormState extends State<EntrepreneurProfileForm> {
   final _website = TextEditingController();
   final _industry = TextEditingController();
   final _location = TextEditingController();
-
+  final _fundingStage = TextEditingController();
   bool _hydrated = false;
 
   @override
@@ -30,19 +30,26 @@ class _EntrepreneurProfileFormState extends State<EntrepreneurProfileForm> {
     _website.dispose();
     _industry.dispose();
     _location.dispose();
+    _fundingStage.dispose();
     super.dispose();
   }
 
   Map<String, dynamic> _payload() {
-    return {
-      "startup_name": _startupName.text.trim(),
-      "one_liner": _oneLiner.text.trim(),
-      "description": _description.text.trim(),
-      "website": _website.text.trim(),
-      "industry": _industry.text.trim(),
-      "location": _location.text.trim(),
-    };
-  }
+  return {
+    "startup_name": _startupName.text.trim(),
+    "one_liner": _oneLiner.text.trim(),
+    "description": _description.text.trim().isEmpty
+        ? null
+        : _description.text.trim(),
+    "website": _website.text.trim().isEmpty
+        ? null
+        : _website.text.trim(),
+    "industry": _industry.text.trim(),
+    "location": _location.text.trim(),
+    "funding_stage": _fundingStage.text.trim(),
+  };
+}
+
 
   void _hydrateFields(EntrepreneurProfileProvider provider) {
     final p = provider.profile;
@@ -54,6 +61,8 @@ class _EntrepreneurProfileFormState extends State<EntrepreneurProfileForm> {
     _website.text = p.website ?? '';
     _industry.text = p.industry;
     _location.text = p.location;
+    _fundingStage.text = p.fundingStage ?? '';
+
 
     _hydrated = true;
   }
@@ -84,29 +93,29 @@ class _EntrepreneurProfileFormState extends State<EntrepreneurProfileForm> {
                 _field(_website, 'Website', keyboardType: TextInputType.url),
                 _field(_industry, 'Industry'),
                 _field(_location, 'Location'),
+                _fundingStageField(_fundingStage, 'Funding Stage'),
 
                 const SizedBox(height: 24),
 
                 ElevatedButton(
-  onPressed: () async {
-    if (!_formKey.currentState!.validate()) return;
+                  onPressed: () async {
+                    if (!_formKey.currentState!.validate()) return;
 
-    final provider =
-        context.read<EntrepreneurProfileProvider>();
+                    final provider = context
+                        .read<EntrepreneurProfileProvider>();
 
-    await provider.createOrUpdateProfile(_payload());
+                    await provider.createOrUpdateProfile(_payload());
 
-    if (!context.mounted) return;
+                    if (!context.mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Profile saved')),
-    );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Profile saved')),
+                    );
 
-    Navigator.pop(context); // AboutTab updates instantly
-  },
-  child: const Text('Save Profile'),
-),
-
+                    Navigator.pop(context); // AboutTab updates instantly
+                  },
+                  child: const Text('Save Profile'),
+                ),
 
                 if (provider.hasDraft) ...[
                   const SizedBox(height: 16),
@@ -138,15 +147,41 @@ class _EntrepreneurProfileFormState extends State<EntrepreneurProfileForm> {
         controller: controller,
         maxLines: maxLines,
         keyboardType: keyboardType,
-        validator: (v) =>
-            v == null || v.trim().isEmpty ? 'Required' : null,
+        validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
         decoration: InputDecoration(
           labelText: label,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
     );
   }
+
+ Widget _fundingStageField(
+  TextEditingController fundingStage,
+  String label,
+) {
+  return DropdownButtonFormField<String>(
+    value: fundingStage.text.isEmpty ? null : fundingStage.text,
+    items: const [
+      DropdownMenuItem(value: "pre_seed", child: Text("Pre-Seed")),
+      DropdownMenuItem(value: "seed", child: Text("Seed")),
+      DropdownMenuItem(value: "series_a", child: Text("Series A")),
+      DropdownMenuItem(value: "series_b", child: Text("Series B+")),
+      DropdownMenuItem(value: "bootstrapped", child: Text("Bootstrapped")),
+    ],
+    onChanged: (v) {
+      fundingStage.text = v ?? '';
+    },
+    validator: (v) =>
+        v == null || v.isEmpty ? 'Required' : null,
+    decoration: InputDecoration(
+      labelText: label,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+    ),
+  );
+}
+
+
 }

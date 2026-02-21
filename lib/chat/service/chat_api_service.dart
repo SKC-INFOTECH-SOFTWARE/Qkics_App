@@ -27,7 +27,9 @@ class ChatApiService {
       final response = await _dio.get('/api/v1/chat/rooms/$roomId/messages/');
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data;
+        
         return data.map((json) => ChatMessage.fromJson(json)).toList();
+        
       }
       return [];
     } on DioException catch (e) {

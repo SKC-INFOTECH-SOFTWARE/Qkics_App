@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:q_kics/chat/chat_api_service.dart';
-import 'package:q_kics/chat/chat_websocket_service.dart';
+import 'package:q_kics/chat/service/chat_api_service.dart';
+import 'package:q_kics/chat/service/chat_websocket_service.dart';
 import 'package:q_kics/chat/models/chat_message.dart';
 import 'package:q_kics/chat/models/chat_room.dart';
 
@@ -83,6 +83,14 @@ void markAllIncomingAsRead(int currentUserId) {
 
     try {
       _messages = await _apiService.getChatMessages(roomId);
+
+      // print user id with messages for debugging
+      print("Fetched ${_messages.length} messages for room $roomId:");
+      for (var msg in _messages) {
+        print("Message ID: ${msg.id}, Sender: ${msg.sender}, Text: ${msg.text}, IsMine: ${msg.isMine}, IsRead: ${msg.isRead}");
+      }
+    
+
     } catch (e) {
       _messagesError = e.toString();
     } finally {

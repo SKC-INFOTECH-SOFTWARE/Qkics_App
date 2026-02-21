@@ -1,4 +1,6 @@
 // lib/subscriptions/services/subscription_service.dart
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import '../models/subscription_plan.dart';
 import '../models/active_subscription.dart';
@@ -8,18 +10,26 @@ class SubscriptionService {
 
   SubscriptionService(this.dio);
 
-  Future<List<SubscriptionPlan>> getSubscriptionPlans() async {
-    try {
-      final response = await dio.get('/api/v1/subscriptions/plans/');
-      if (response.statusCode == 200) {
-        final List<dynamic> results = response.data['results'] ?? [];
-        return results.map((json) => SubscriptionPlan.fromJson(json)).toList();
-      }
-      return [];
-    } catch (e) {
-      rethrow;
-    }
+Future<List<SubscriptionPlan>> getSubscriptionPlans() async {
+  final response = await dio.get("/api/v1/subscriptions/plans/");
+
+  dynamic body = response.data;
+
+  // If API returns JSON string instead of decoded list
+  if (body is String) {
+    body = jsonDecode(body);
   }
+
+  // Ensure it's a List
+  if (body is List) {
+    return body
+        .map((e) => SubscriptionPlan.fromJson(e))
+        .toList();
+  }
+
+  // If something unexpected comes
+  throw Exception("Invalid subscription plan format");
+}
 
   Future<ActiveSubscription?> subscribeToPlan(String planUuid) async {
     try {

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:q_kics/profile/models/expert/expert_profile_model.dart';
 import 'package:q_kics/profile/ui/upgrade/expert/certification_section.dart';
 import 'package:q_kics/profile/ui/upgrade/expert/education_section.dart';
 import 'package:q_kics/profile/ui/upgrade/expert/experience_section.dart';
 import 'package:q_kics/profile/ui/upgrade/expert/honor_section.dart';
+import 'package:q_kics/providers/api_provider.dart';
 import 'package:q_kics/providers/expert_profile_provider.dart';
 
 class ExpertProfileForm extends StatefulWidget {
@@ -16,12 +16,14 @@ class ExpertProfileForm extends StatefulWidget {
 
 class _ExpertProfileFormState extends State<ExpertProfileForm> {
   final _formKey = GlobalKey<FormState>();
+
   final _firstName = TextEditingController();
   final _lastName = TextEditingController();
   final _headline = TextEditingController();
   final _primaryExpertise = TextEditingController();
   final _otherExpertise = TextEditingController();
   final _hourlyRate = TextEditingController();
+
   bool _isAvailable = true;
   bool _filledOnce = false;
 
@@ -60,12 +62,11 @@ class _ExpertProfileFormState extends State<ExpertProfileForm> {
       appBar: AppBar(title: const Text('Expert Profile')),
       body: Consumer<ExpertProfileProvider>(
         builder: (context, provider, child) {
-          // Show loader ONLY on initial fetch when profile is null and loading
-          if (provider.profileLoading && provider.profile == null) {
+          // ✅ Show loader only until first fetch completes
+          if (!provider.initialized) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // Otherwise, always show the form (even during actionLoading)
           return _buildForm(provider);
         },
       ),
@@ -73,26 +74,39 @@ class _ExpertProfileFormState extends State<ExpertProfileForm> {
   }
 
   Widget _buildForm(ExpertProfileProvider provider) {
-    // Listen only to profile changes for filling fields
     final profile = provider.profile;
+    final user = context.read<ApiProvider>().currentUser;
 
-    if (!_filledOnce && profile != null) {
-  _firstName.text = profile.firstName;
-  _lastName.text = profile.lastName;
-  _headline.text = profile.headline;
-  _primaryExpertise.text = profile.primaryExpertise;
-  _otherExpertise.text = profile.otherExpertise ?? '';
-  
-  // ✅ Only set hourly rate if it's not null and > 0
-  if (profile.hourlyRate != null && profile.hourlyRate! > 0) {
-    _hourlyRate.text = profile.hourlyRate.toString();
-  } else {
-    _hourlyRate.text = ''; // Keep empty if not set
-  }
-  
-  _isAvailable = profile.isAvailable;
-  _filledOnce = true;
-}
+    if (!_filledOnce) {
+      if (profile != null) {
+        // 🔹 EDIT MODE (Expert profile exists)
+
+        _firstName.text = profile.firstName.isNotEmpty
+            ? profile.firstName
+            : (user?.firstName ?? '');
+
+        _lastName.text = profile.lastName.isNotEmpty
+            ? profile.lastName
+            : (user?.lastName ?? '');
+
+        _headline.text = profile.headline;
+        _primaryExpertise.text = profile.primaryExpertise;
+        _otherExpertise.text = profile.otherExpertise ?? '';
+
+        if (profile.hourlyRate != null && profile.hourlyRate! > 0) {
+          _hourlyRate.text = profile.hourlyRate.toString();
+        }
+
+        _isAvailable = profile.isAvailable;
+      } else if (user != null) {
+        // 🔹 CREATE MODE (No expert profile yet)
+
+        _firstName.text = user.firstName;
+        _lastName.text = user.lastName;
+      }
+
+      _filledOnce = true;
+    }
 
     return Form(
       key: _formKey,
@@ -104,7 +118,11 @@ class _ExpertProfileFormState extends State<ExpertProfileForm> {
           _field(_headline, 'Headline'),
           _field(_primaryExpertise, 'Primary Expertise'),
           _field(_otherExpertise, 'Other Expertise'),
-          _field(_hourlyRate, 'Hourly Rate', keyboardType: TextInputType.number),
+          _field(
+            _hourlyRate,
+            'Hourly Rate',
+            keyboardType: TextInputType.number,
+          ),
           SwitchListTile(
             title: const Text('Available for consultation'),
             value: _isAvailable,
@@ -112,38 +130,39 @@ class _ExpertProfileFormState extends State<ExpertProfileForm> {
           ),
           const SizedBox(height: 16),
 
-          // Save button with action loading
           ElevatedButton(
-  onPressed: provider.actionLoading
-      ? null
-      : () async {
-          if (!_formKey.currentState!.validate()) return;
+            onPressed: provider.actionLoading
+                ? null
+                : () async {
+                    if (!_formKey.currentState!.validate()) return;
 
-          await provider.createOrUpdateProfile(_payload());
+                    await provider.createOrUpdateProfile(_payload());
 
-          if (!context.mounted) return;
+                    if (!context.mounted) return;
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Profile saved successfully'),
-            ),
-          );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Profile saved successfully'),
+                      ),
+                    );
 
-          Navigator.pop(context); // 🔥 THIS FIXES THE STALE ABOUT TAB
-        },
-  child: provider.actionLoading
-      ? const SizedBox(
-          height: 18,
-          width: 18,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        )
-      : const Text('Save Profile'),
-),
-
+                    Navigator.pop(context);
+                  },
+            child: provider.actionLoading
+                ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Save Profile'),
+          ),
 
           const SizedBox(height: 24),
           const Divider(),
-          const Text('Expert Portfolio', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text(
+            'Expert Portfolio',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 16),
 
           const ExperienceSection(),
@@ -158,7 +177,9 @@ class _ExpertProfileFormState extends State<ExpertProfileForm> {
                 : () async {
                     final note = await _reviewNoteDialog(context);
                     if (note == null || note.isEmpty) return;
-                    await provider.submitForExpertReview();
+
+                    await provider.submitForExpertReview(note: note);
+
                     if (context.mounted) Navigator.pop(context);
                   },
             child: const Text('Submit for Admin Review'),
@@ -168,16 +189,23 @@ class _ExpertProfileFormState extends State<ExpertProfileForm> {
     );
   }
 
-  Widget _field(TextEditingController c, String label, {TextInputType keyboardType = TextInputType.text}) {
+  Widget _field(
+    TextEditingController controller,
+    String label, {
+    TextInputType keyboardType = TextInputType.text,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: TextFormField(
-        controller: c,
+        controller: controller,
         keyboardType: keyboardType,
-        validator: (v) => v == null || v.isEmpty ? 'This field is required' : null,
+        validator: (v) =>
+            v == null || v.isEmpty ? 'This field is required' : null,
         decoration: InputDecoration(
           labelText: label,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       ),
     );
@@ -195,9 +223,13 @@ class _ExpertProfileFormState extends State<ExpertProfileForm> {
           decoration: const InputDecoration(hintText: 'Message to admin'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            onPressed: () =>
+                Navigator.pop(context, controller.text.trim()),
             child: const Text('Submit'),
           ),
         ],

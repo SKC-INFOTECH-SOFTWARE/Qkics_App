@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
 import 'package:q_kics/home/post_detail_page.dart';
 import 'package:q_kics/models/post.dart';
 import 'package:q_kics/models/tag.dart';
+import 'package:q_kics/providers/api_provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:q_kics/home/comment_sheet.dart';
 import 'package:q_kics/home/create_post_page.dart';
@@ -262,13 +264,28 @@ class PostCard extends StatelessWidget {
             ),
           );
           if (confirm == true && context.mounted) {
-            onDelete?.call();
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text("Post deleted"),
-                backgroundColor: Colors.red,
-              ),
-            );
+            final api = context.read<ApiProvider>();
+
+            final success = await api.deletePost(post.id);
+
+            if (success && context.mounted) {
+              // Remove post locally
+              api.fetchPosts(forceRefresh: true);
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Post deleted"),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            } else if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Delete failed"),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
           }
         }
       },

@@ -15,7 +15,8 @@ class ExpertProfileProvider extends ChangeNotifier {
 
   bool _disposed = false;
   bool get mounted => !_disposed;
-
+bool _initialized = false;
+bool get initialized => _initialized;
   @override
   void dispose() {
     _disposed = true;
@@ -41,31 +42,43 @@ class ExpertProfileProvider extends ChangeNotifier {
       profile != null && profile!.applicationStatus == 'pending';
 
   Future<void> fetchExpertProfile() async {
-    if (_profileLoading) return; // Prevent duplicate calls
+  if (_profileLoading) return;
 
-    _profileLoading = true;
-    notifyListeners();
+  _profileLoading = true;
 
-    try {
-      final data = await api.getMyExpertProfile();
-      profile = ExpertProfile.fromJson(data);
-      exists = true;
+  try {
+    final data = await api.getMyExpertProfile();
 
-      experiences = List<Map<String, dynamic>>.from(data['experiences'] ?? []);
-      educations = List<Map<String, dynamic>>.from(data['educations'] ?? []);
-      certifications = List<Map<String, dynamic>>.from(
-        data['certifications'] ?? [],
-      );
-      honors = List<Map<String, dynamic>>.from(data['honors_awards'] ?? []);
-    } catch (e) {
+    profile = ExpertProfile.fromJson(data);
+    exists = true;
+
+    experiences =
+        List<Map<String, dynamic>>.from(data['experiences'] ?? []);
+    educations =
+        List<Map<String, dynamic>>.from(data['educations'] ?? []);
+    certifications =
+        List<Map<String, dynamic>>.from(data['certifications'] ?? []);
+    honors =
+        List<Map<String, dynamic>>.from(data['honors_awards'] ?? []);
+
+  } on DioException catch (e) {
+    // ✅ 404 = No profile yet (Create mode)
+    if (e.response?.statusCode == 404) {
       profile = null;
       exists = false;
-      debugPrint('Failed to fetch expert profile: $e');
-    } finally {
-      _profileLoading = false;
-      notifyListeners();
+    } else {
+      debugPrint('Fetch error: ${e.response?.data}');
     }
+  } catch (e) {
+    debugPrint('Unexpected fetch error: $e');
+  } finally {
+    _profileLoading = false;
+    _initialized = true;   // 🔥 VERY IMPORTANT
+    notifyListeners();
   }
+}
+
+
 
   // ============================================================
   // CREATE / UPDATE PROFILE

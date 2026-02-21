@@ -70,7 +70,7 @@ class _MainNavigationState extends State<MainNavigation> {
       const SearchPage(),
       const CreatePostPage(),
       const NotificationsPage(),
-      const ProfileRoute(),
+      ProfileRoute(onBarsVisibilityChanged: _onBarsVisibilityChanged),
     ];
 
     return Scaffold(

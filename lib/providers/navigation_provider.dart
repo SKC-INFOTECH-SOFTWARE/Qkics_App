@@ -13,6 +13,9 @@ class NavigationProvider extends ChangeNotifier {
 
   void goHome() => setIndex(0);
   void goSearch() => setIndex(1);
-  void goPost() => setIndex(2);
-  void goProfile() => setIndex(3);
+  void goPost() {
+  _index = 2;
+  notifyListeners();
 }
+  void goProfile() => setIndex(3);
+} 

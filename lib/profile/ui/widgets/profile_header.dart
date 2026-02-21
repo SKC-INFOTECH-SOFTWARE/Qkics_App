@@ -111,7 +111,7 @@ class ProfileHeader extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 60, 20, 24),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
         child: Column(
           children: [
             Row(
@@ -230,8 +230,7 @@ class ProfileHeader extends StatelessWidget {
                       ),
 
                       const SizedBox(height: 12),
-                      if (!isPublicView)
-                      _getPremiumButton(context, theme),
+                      if (!isPublicView) _getPremiumButton(context, theme),
                     ],
                   ),
                 ),
@@ -523,7 +522,7 @@ class ProfileHeader extends StatelessWidget {
 
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          
+
           children: [
             Icon(
               hasActiveSubscription
@@ -535,7 +534,7 @@ class ProfileHeader extends StatelessWidget {
                   : theme.colorScheme.primary,
             ),
             const SizedBox(width: 6),
-            
+
             Text(
               hasActiveSubscription ? "My Subscription" : "Upgrade to Premium",
               style: TextStyle(

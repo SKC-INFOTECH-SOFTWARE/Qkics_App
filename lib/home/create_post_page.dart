@@ -7,6 +7,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:q_kics/providers/api_provider.dart';
 import 'package:q_kics/models/post.dart';
 import 'package:q_kics/models/tag.dart';
+import 'package:q_kics/providers/navigation_provider.dart';
 
 class CreatePostPage extends StatefulWidget {
   final Post? postToEdit;
@@ -52,6 +53,30 @@ class _CreatePostPageState extends State<CreatePostPage> {
     _contentController.text = post.fullContent ?? post.content;
     _existingImageUrl = post.image;
     _selectedTags.addAll(post.tags.map((t) => t.name));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final nav = context.watch<NavigationProvider>();
+
+    if (nav.index == 2 && !_isEditMode) {
+      _resetForm();
+    }
+  }
+
+  void _resetForm() {
+    _titleController.clear();
+    _contentController.clear();
+
+    _selectedTags.clear();
+    _imageFile = null;
+    _existingImageUrl = null;
+    _shouldRemoveImage = false;
+    _showAllTags = false;
+
+    setState(() {});
   }
 
   Future<void> _loadTags() async {
@@ -126,18 +151,18 @@ class _CreatePostPageState extends State<CreatePostPage> {
       return;
     }
 
-    // Programmatically split content for API
     final previewContent = fullContent.length > 500
         ? fullContent.substring(0, 500)
         : fullContent;
 
     setState(() => _isPosting = true);
-    final api = Provider.of<ApiProvider>(context, listen: false);
-    bool success = false;
+
+    final api = context.read<ApiProvider>();
+    final nav = context.read<NavigationProvider>();
 
     try {
       if (_isEditMode) {
-        success = await api.updatePost(
+        await api.updatePost(
           postId: widget.postToEdit!.id,
           title: _titleController.text.trim().isEmpty
               ? null
@@ -149,7 +174,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
           tags: _selectedTags.toList(),
         );
       } else {
-        success = await api.createPost(
+        await api.createPost(
           title: _titleController.text.trim().isEmpty
               ? null
               : _titleController.text.trim(),
@@ -159,29 +184,41 @@ class _CreatePostPageState extends State<CreatePostPage> {
           tags: _selectedTags.toList(),
         );
       }
-    } catch (e) {
-      debugPrint("Post error: $e");
-    }
 
-    setState(() => _isPosting = false);
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (success) {
+      // 🔥 Clear form first
+      _resetForm();
+
+      // 🔥 Switch to Home tab
+      nav.goHome();
+
+      // 🔥 Refresh posts
+      Future.microtask(() {
+        api.fetchPosts(forceRefresh: true);
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_isEditMode ? "Post Updated!" : "Posted Successfully!"),
+          content: Text(
+            _isEditMode ? "Post Updated Successfully!" : "Posted Successfully!",
+          ),
           backgroundColor: Colors.green,
         ),
       );
-      api.fetchPosts(forceRefresh: true);
-      Navigator.pop(context, true);
-    } else {
+    } catch (e) {
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(_isEditMode ? "Update failed" : "Post failed"),
           backgroundColor: Colors.red,
         ),
       );
+    } finally {
+      if (mounted) {
+        setState(() => _isPosting = false);
+      }
     }
   }
 

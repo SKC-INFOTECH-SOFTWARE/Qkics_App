@@ -5,8 +5,14 @@ class InvestorApiService {
   final Dio dio;
   InvestorApiService(this.dio);
 
-  Future<List<InvestorProfile>> getAllInvestors() async {
-    final res = await dio.get('/api/v1/investors/');
-    return (res.data as List).map((e) => InvestorProfile.fromJson(e)).toList();
-  }
+ Future<List<InvestorProfile>> getAllInvestors() async {
+  final res = await dio.get('/api/v1/investors/');
+
+  final data = res.data as Map<String, dynamic>;
+  final List<dynamic> results = data['results'];
+
+  return results
+      .map((e) => InvestorProfile.fromJson(e as Map<String, dynamic>))
+      .toList();
+}
 }

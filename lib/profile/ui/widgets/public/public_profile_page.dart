@@ -55,7 +55,18 @@ class PublicProfilePage extends StatelessWidget {
             return DefaultTabController(
               length: tabCount,
               child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
+                  // ================= APPBAR (Pinned Time Portion) =================
+                  SliverAppBar(
+                    pinned: true,
+                    expandedHeight: 0,
+                    toolbarHeight: 0, // Keep only status bar background
+                    backgroundColor: theme.colorScheme.background,
+                    elevation: 0,
+                    surfaceTintColor: Colors.transparent,
+                  ),
+
                   // ================= HEADER =================
                   SliverToBoxAdapter(
                     child: ProfileHeader(
@@ -81,13 +92,16 @@ class PublicProfilePage extends StatelessWidget {
                     ),
                   ),
 
-                  // ================= TABS =================
-                  SliverToBoxAdapter(
-                    child: TabBar(
-                      tabs: [
-                        const Tab(text: 'Posts'),
-                        if (showAbout) const Tab(text: 'About'),
-                      ],
+                  // ================= STICKY TABS =================
+                  SliverPersistentHeader(
+                    pinned: true,
+                    delegate: _SliverAppBarDelegate(
+                      TabBar(
+                        tabs: [
+                          const Tab(text: 'Posts'),
+                          if (showAbout) const Tab(text: 'About'),
+                        ],
+                      ),
                     ),
                   ),
 
@@ -132,7 +146,18 @@ class _PublicProfileShimmer extends StatelessWidget {
       baseColor: baseColor,
       highlightColor: highlightColor,
       child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
+          // ================= APPBAR (Pinned Time Portion) =================
+          SliverAppBar(
+            pinned: true,
+            expandedHeight: 0,
+            toolbarHeight: 0, // Keep only status bar background
+            backgroundColor: theme.colorScheme.background,
+            elevation: 0,
+            surfaceTintColor: Colors.transparent,
+          ),
+
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -166,5 +191,33 @@ class _PublicProfileShimmer extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
+  final TabBar _tabBar;
+
+  _SliverAppBarDelegate(this._tabBar);
+
+  @override
+  double get minExtent => _tabBar.preferredSize.height;
+  @override
+  double get maxExtent => _tabBar.preferredSize.height;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: _tabBar,
+    );
+  }
+
+  @override
+  bool shouldRebuild(_SliverAppBarDelegate oldDelegate) {
+    return false;
   }
 }

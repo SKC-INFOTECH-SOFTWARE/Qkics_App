@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:q_kics/profile/models/entrepreneur/entrepreneur_profile_model.dart';
 import '../profile/services/entrepreneur_api_service.dart';
@@ -75,25 +76,25 @@ class EntrepreneurProfileProvider extends ChangeNotifier {
   }
 
   Future<void> createOrUpdateProfile(Map<String, dynamic> data) async {
-    loading = true;
+  loading = true;
+  notifyListeners();
+
+  try {
+    final res = profile == null
+        ? await api.createProfile(data)
+        : await api.updateProfile(data);
+
+    profile = EntrepreneurProfile.fromJson(res);
+    exists = true;
+  } on DioException catch (e) {
+    debugPrint("STATUS: ${e.response?.statusCode}");
+    debugPrint("ERROR BODY: ${e.response?.data}");
+  } finally {
+    loading = false;
     notifyListeners();
-
-    try {
-      final res = profile == null
-          ? await api.createProfile(data)
-          : await api.updateProfile(data);
-
-      profile = EntrepreneurProfile.fromJson(res);
-      exists = true;
-    } catch (e) {
-      debugPrint(
-        "Entrepreneur profile update failed (already handled globally): $e",
-      );
-    } finally {
-      loading = false;
-      notifyListeners();
-    }
   }
+}
+
 
   Future<void> submitForEntrepreneurReview({String? note}) async {
     loading = true;
@@ -105,10 +106,10 @@ class EntrepreneurProfileProvider extends ChangeNotifier {
       );
 
       await fetchEntrepreneurProfile();
-    } catch (e) {
-      debugPrint(
-        "Entrepreneur submission failed (already handled globally): $e",
-      );
+    } on DioException catch (e) {
+  debugPrint("STATUS CODE: ${e.response?.statusCode}");
+  debugPrint("ERROR DATA: ${e.response?.data}");
+  rethrow;
     } finally {
       loading = false;
       notifyListeners();

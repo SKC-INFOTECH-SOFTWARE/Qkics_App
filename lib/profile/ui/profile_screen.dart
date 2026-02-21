@@ -19,7 +19,9 @@ import 'package:q_kics/profile/ui/widgets/answers_tab.dart';
 import 'package:q_kics/subscriptions/providers/subscription_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final ValueChanged<bool>? onBarsVisibilityChanged;
+
+  const ProfileScreen({super.key, this.onBarsVisibilityChanged});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -27,10 +29,15 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   bool _loadedSubProfiles = false;
+  late final ScrollController _scrollController;
+  bool _isNavbarVisible = true;
+  double _previousPixels = 0.0;
+  static const double _velocityThreshold = 200;
 
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController()..addListener(_scrollListener);
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
@@ -49,6 +56,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // Fetch active subscription
       await subscriptionProvider.fetchActiveSubscription();
     });
+  }
+
+  void _scrollListener() {
+    if (!_scrollController.hasClients) return;
+
+    final currentPixels = _scrollController.position.pixels;
+    final delta = currentPixels - _previousPixels;
+    final velocity = delta.abs() * 10;
+
+    bool shouldHide = false;
+    bool shouldShow = false;
+
+    if (velocity > _velocityThreshold) {
+      if (delta > 0 && currentPixels > 100) {
+        // Scrolling down and not at top → hide
+        shouldHide = true;
+      } else if (delta < 0) {
+        // Scrolling up → show
+        shouldShow = true;
+      }
+    }
+
+    // Always show if at the very top
+    if (currentPixels <= 0) {
+      shouldShow = true;
+      shouldHide = false;
+    }
+
+    if (shouldHide && _isNavbarVisible) {
+      _isNavbarVisible = false;
+      widget.onBarsVisibilityChanged?.call(false);
+    } else if (shouldShow && !_isNavbarVisible) {
+      _isNavbarVisible = true;
+      widget.onBarsVisibilityChanged?.call(true);
+    }
+
+    _previousPixels = currentPixels;
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_scrollListener);
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -108,8 +159,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 await context.read<ProfileProvider>().loadProfile(force: true);
               },
               child: NestedScrollView(
+                controller: _scrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
                 headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
                   return <Widget>[
+                    // ================= APPBAR (Pinned Time Portion) =================
+                    SliverAppBar(
+                      pinned: true,
+                      expandedHeight: 0,
+                      toolbarHeight: 0, // Keep only status bar background
+                      backgroundColor: theme.colorScheme.background,
+                      elevation: 0,
+                      surfaceTintColor: Colors.transparent,
+                    ),
+
                     // ================= PROFILE HEADER =================
                     SliverToBoxAdapter(
                       child: ProfileHeader(

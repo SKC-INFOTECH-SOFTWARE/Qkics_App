@@ -26,8 +26,11 @@ class SubscriptionProvider extends ChangeNotifier {
 
     try {
       _plans = await _service.getSubscriptionPlans();
+      print(_plans);
+
     } catch (e) {
       _error = e.toString();
+      print("Error fetching subscription plans: $_error");
     } finally {
       _isLoading = false;
       notifyListeners();

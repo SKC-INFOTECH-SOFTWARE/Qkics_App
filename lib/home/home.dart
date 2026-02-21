@@ -9,6 +9,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:q_kics/home/home_side_menu.dart';
 import 'package:q_kics/home/post_card.dart';
 import 'package:q_kics/models/user.dart';
+import 'package:q_kics/home/post_shimmer.dart';
 
 class HomePage extends StatefulWidget {
   final ScrollController? scrollController;
@@ -262,6 +263,16 @@ class _HomePageState extends State<HomePage> {
         physics: const AlwaysScrollableScrollPhysics(),
         cacheExtent: 1000, // Pre-renders posts for smoother scrolling
         slivers: [
+          // ================= APPBAR (Pinned Time Portion) =================
+          SliverAppBar(
+            pinned: true,
+            expandedHeight: 0,
+            toolbarHeight: 0, // Keep only status bar background
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            elevation: 0,
+            surfaceTintColor: Colors.transparent,
+          ),
+
           if (api.selectedTag != null)
             SliverToBoxAdapter(
               child: Container(
@@ -305,7 +316,17 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ),
-          if (posts.isEmpty && !api.isLoadingMore)
+          if (posts.isEmpty && api.isLoadingMore)
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => const PostShimmer(),
+                  childCount: 3,
+                ),
+              ),
+            )
+          else if (posts.isEmpty && !api.isLoadingMore)
             SliverFillRemaining(
               hasScrollBody: false,
               child: Center(
@@ -336,8 +357,8 @@ class _HomePageState extends State<HomePage> {
                     if (index == posts.length) {
                       return api.hasMore
                           ? const Padding(
-                              padding: EdgeInsets.all(20),
-                              child: Center(child: CircularProgressIndicator()),
+                              padding: EdgeInsets.symmetric(vertical: 0),
+                              child: PostShimmer(),
                             )
                           : const SizedBox(height: 80);
                     }

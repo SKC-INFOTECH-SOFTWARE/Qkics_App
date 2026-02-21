@@ -18,7 +18,9 @@ import 'package:q_kics/profile/ui/profile_screen.dart';
 // ============================================================
 
 class ProfileRoute extends StatelessWidget {
-  const ProfileRoute({super.key});
+  final ValueChanged<bool>? onBarsVisibilityChanged;
+
+  const ProfileRoute({super.key, this.onBarsVisibilityChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +48,7 @@ class ProfileRoute extends StatelessWidget {
         // ================= INVESTOR PROFILE =================
         ChangeNotifierProvider(create: (_) => InvestorProfileProvider(api.dio)),
       ],
-      child: const ProfileScreen(),
+      child: ProfileScreen(onBarsVisibilityChanged: onBarsVisibilityChanged),
     );
   }
 }

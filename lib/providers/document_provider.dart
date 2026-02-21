@@ -74,22 +74,19 @@ class DocumentProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchDownloadHistory() async {
-    _isLoadingHistory = true;
-    notifyListeners();
+ Future<void> fetchDownloadHistory() async {
+  _isLoadingHistory = true;
+  notifyListeners();
 
-    try {
-      final data = await api.fetchDownloadHistory();
-      _downloadHistory = data
-          .map((json) => DownloadHistory.fromJson(json))
-          .toList();
-    } catch (e) {
-      debugPrint("History fetch failed: $e");
-    } finally {
-      _isLoadingHistory = false;
-      notifyListeners();
-    }
+  try {
+    _downloadHistory = await api.fetchDownloadHistory();
+  } catch (e) {
+    debugPrint("History fetch failed: $e");
+  } finally {
+    _isLoadingHistory = false;
+    notifyListeners();
   }
+}
 
   Future<String?> downloadDocument(Document doc) async {
     try {
