@@ -21,15 +21,16 @@ class _CreatePostPageState extends State<CreatePostPage> {
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
 
-  File? _imageFile;
-  String? _existingImageUrl;
-  bool _shouldRemoveImage = false;
+  final List<File> _mediaFiles = [];
+  final List<PostMedia> _existingMedia = [];
+  final List<int> _mediaToRemove = [];
 
   final Set<String> _selectedTags = {};
   List<Tag> _availableTags = [];
   bool _isLoadingTags = true;
   bool _isPosting = false;
   bool _showAllTags = false;
+  bool _isKnowledgeHub = false;
 
   late final bool _isEditMode;
 
@@ -51,8 +52,9 @@ class _CreatePostPageState extends State<CreatePostPage> {
     final post = widget.postToEdit!;
     _titleController.text = post.title ?? '';
     _contentController.text = post.fullContent ?? post.content;
-    _existingImageUrl = post.image;
+    _existingMedia.addAll(post.media);
     _selectedTags.addAll(post.tags.map((t) => t.name));
+    _isKnowledgeHub = post.knowledgeHub;
   }
 
   @override
@@ -71,10 +73,11 @@ class _CreatePostPageState extends State<CreatePostPage> {
     _contentController.clear();
 
     _selectedTags.clear();
-    _imageFile = null;
-    _existingImageUrl = null;
-    _shouldRemoveImage = false;
+    _mediaFiles.clear();
+    _existingMedia.clear();
+    _mediaToRemove.clear();
     _showAllTags = false;
+    _isKnowledgeHub = false;
 
     setState(() {});
   }
@@ -100,19 +103,46 @@ class _CreatePostPageState extends State<CreatePostPage> {
     }
   }
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
-    );
-    if (picked != null && mounted) {
-      setState(() {
-        _imageFile = File(picked.path);
-        _existingImageUrl = null;
-        _shouldRemoveImage = false;
-      });
+  Future<void> _pickMedia(bool isVideo) async {
+    if (_mediaFiles.length + _existingMedia.length >= 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Maximum 10 media files allowed")),
+      );
+      return;
     }
+
+    final picker = ImagePicker();
+    if (isVideo) {
+      final picked = await picker.pickVideo(source: ImageSource.gallery);
+      if (picked != null && mounted) {
+        setState(() {
+          _mediaFiles.add(File(picked.path));
+        });
+      }
+    } else {
+      final picked = await picker.pickMultiImage(imageQuality: 85);
+      if (picked.isNotEmpty && mounted) {
+        setState(() {
+          final remaining = 10 - (_mediaFiles.length + _existingMedia.length);
+          _mediaFiles.addAll(
+            picked.take(remaining).map((p) => File(p.path)).toList(),
+          );
+        });
+      }
+    }
+  }
+
+  void _removeNewMedia(int index) {
+    setState(() {
+      _mediaFiles.removeAt(index);
+    });
+  }
+
+  void _removeExistingMedia(int index) {
+    setState(() {
+      _mediaToRemove.add(_existingMedia[index].id);
+      _existingMedia.removeAt(index);
+    });
   }
 
   void _toggleTag(String tagName) {
@@ -133,13 +163,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
     });
   }
 
-  void _removeImage() {
-    setState(() {
-      _imageFile = null;
-      _existingImageUrl = null;
-      _shouldRemoveImage = true;
-    });
-  }
+  // Removed _removeImage as it is replaced by granular removal
 
   Future<void> _submitPost() async {
     final fullContent = _contentController.text.trim();
@@ -161,51 +185,68 @@ class _CreatePostPageState extends State<CreatePostPage> {
     final nav = context.read<NavigationProvider>();
 
     try {
+      bool success;
       if (_isEditMode) {
-        await api.updatePost(
+        success = await api.updatePost(
           postId: widget.postToEdit!.id,
           title: _titleController.text.trim().isEmpty
               ? null
               : _titleController.text.trim(),
           previewContent: previewContent,
           fullContent: fullContent,
-          image: _imageFile,
-          removeImage: _shouldRemoveImage,
+          mediaFiles: _mediaFiles,
+          knowledgeHub: _isKnowledgeHub,
+          removeMediaIds: _mediaToRemove.isNotEmpty ? _mediaToRemove : null,
           tags: _selectedTags.toList(),
         );
       } else {
-        await api.createPost(
+        success = await api.createPost(
           title: _titleController.text.trim().isEmpty
               ? null
               : _titleController.text.trim(),
           previewContent: previewContent,
           fullContent: fullContent,
-          image: _imageFile,
+          mediaFiles: _mediaFiles,
+          knowledgeHub: _isKnowledgeHub,
           tags: _selectedTags.toList(),
         );
       }
 
       if (!mounted) return;
 
-      // 🔥 Clear form first
-      _resetForm();
+      if (success) {
+        // 🔥 Clear form first
+        _resetForm();
 
-      // 🔥 Switch to Home tab
-      nav.goHome();
+        // 🔥 Switch to Home tab
+        nav.goHome();
 
-      // 🔥 Refresh posts
-      Future.microtask(() {
-        api.fetchPosts(forceRefresh: true);
-      });
+        // 🔥 Refresh posts
+        Future.microtask(() {
+          api.fetchPosts(forceRefresh: true);
+        });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _isEditMode ? "Post Updated Successfully!" : "Posted Successfully!",
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _isEditMode
+                  ? "Post Updated Successfully!"
+                  : "Posted Successfully!",
+            ),
+            backgroundColor: Colors.green,
           ),
-          backgroundColor: Colors.green,
-        ),
-      );
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _isEditMode ? "Failed to update post" : "Failed to create post",
+            ),
+            backgroundColor: Colors.orange,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
 
@@ -302,7 +343,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 16),
 
             // CONTENT INPUT BOX
             Container(
@@ -335,62 +376,94 @@ class _CreatePostPageState extends State<CreatePostPage> {
             ),
             const SizedBox(height: 16),
 
-            // IMAGE PREVIEW
-            if (_imageFile != null || _existingImageUrl != null)
-              Stack(
-                children: [
-                  Container(
-                    width: double.infinity,
-                    height: 340,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      image: DecorationImage(
-                        image: _imageFile != null
-                            ? FileImage(_imageFile!)
-                            : CachedNetworkImageProvider(_existingImageUrl!)
-                                  as ImageProvider,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 12,
-                    right: 12,
-                    child: IconButton(
-                      onPressed: _removeImage,
-                      icon: const Icon(
-                        Icons.cancel,
-                        size: 36,
-                        color: Colors.white,
-                      ),
-                      style: IconButton.styleFrom(
-                        backgroundColor: Colors.black54,
-                      ),
-                    ),
-                  ),
-                ],
+            // MEDIA PREVIEW
+            if (_mediaFiles.isNotEmpty || _existingMedia.isNotEmpty)
+              Container(
+                height: 140,
+                margin: const EdgeInsets.only(bottom: 16),
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    ..._existingMedia.asMap().entries.map((entry) {
+                      final idx = entry.key;
+                      final media = entry.value;
+                      return _buildMediaCard(
+                        media: media.file,
+                        isExisting: true,
+                        isVideo: media.mediaType == 'video',
+                        onRemove: () => _removeExistingMedia(idx),
+                      );
+                    }),
+                    ..._mediaFiles.asMap().entries.map((entry) {
+                      final idx = entry.key;
+                      final file = entry.value;
+                      return _buildMediaCard(
+                        file: file,
+                        isExisting: false,
+                        isVideo:
+                            file.path.toLowerCase().endsWith('.mp4') ||
+                            file.path.toLowerCase().endsWith('.mov'),
+                        onRemove: () => _removeNewMedia(idx),
+                      );
+                    }),
+                  ],
+                ),
               ),
-            const SizedBox(height: 16),
 
-            OutlinedButton.icon(
-              onPressed: _pickImage,
-              icon: const Icon(Icons.photo_library_outlined),
-              label: Text(
-                _imageFile != null || _existingImageUrl != null
-                    ? "Change Photo"
-                    : "Add Photo",
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: colorScheme.primary,
-                side: BorderSide(color: colorScheme.primary, width: 2),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 16,
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _pickMedia(false),
+                    icon: const Icon(Icons.photo_library_outlined),
+                    label: const Text("Add Photos"),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colorScheme.primary,
+                      side: BorderSide(color: colorScheme.primary, width: 2),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _pickMedia(true),
+                    icon: const Icon(Icons.video_library_outlined),
+                    label: const Text("Add Video"),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colorScheme.primary,
+                      side: BorderSide(color: colorScheme.primary, width: 2),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // KNOWLEDGE HUB TOGGLE
+            SwitchListTile(
+              title: const Text(
+                "Knowledge Hub",
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
+              subtitle: const Text(
+                "Make this post available in the Knowledge Hub",
+              ),
+              value: _isKnowledgeHub,
+              onChanged: (val) => setState(() => _isKnowledgeHub = val),
+              secondary: Icon(
+                Icons.lightbulb_outline,
+                color: _isKnowledgeHub ? colorScheme.primary : Colors.grey,
+              ),
+              contentPadding: EdgeInsets.zero,
+              activeColor: colorScheme.primary,
             ),
             const SizedBox(height: 20),
 
@@ -472,6 +545,66 @@ class _CreatePostPageState extends State<CreatePostPage> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildMediaCard({
+    File? file,
+    String? media,
+    required bool isExisting,
+    required bool isVideo,
+    required VoidCallback onRemove,
+  }) {
+    return Container(
+      width: 120,
+      margin: const EdgeInsets.only(right: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: Colors.black,
+      ),
+      child: Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: isExisting
+                ? CachedNetworkImage(
+                    imageUrl: media!,
+                    width: 120,
+                    height: 140,
+                    fit: BoxFit.cover,
+                    errorWidget: (c, s, e) => const Icon(Icons.error),
+                  )
+                : isVideo
+                ? const Center(
+                    child: Icon(Icons.videocam, color: Colors.white, size: 40),
+                  )
+                : Image.file(file!, width: 120, height: 140, fit: BoxFit.cover),
+          ),
+          if (isVideo)
+            const Center(
+              child: Icon(
+                Icons.play_circle_fill,
+                color: Colors.white70,
+                size: 32,
+              ),
+            ),
+          Positioned(
+            top: 4,
+            right: 4,
+            child: GestureDetector(
+              onTap: onRemove,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.close, color: Colors.white, size: 16),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

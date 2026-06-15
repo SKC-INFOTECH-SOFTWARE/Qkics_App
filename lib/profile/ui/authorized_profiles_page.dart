@@ -6,9 +6,11 @@ import 'package:q_kics/profile/models/entrepreneur/entrepreneur_profile_model.da
 import 'package:q_kics/profile/models/investor/investor_profile.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:q_kics/profile/ui/widgets/public/public_profile_page.dart';
+import 'package:q_kics/booking/investor_slots_page.dart';
 
 class AuthorizedProfilesPage extends StatefulWidget {
-  const AuthorizedProfilesPage({super.key});
+  final bool onlyInvestors;
+  const AuthorizedProfilesPage({super.key, this.onlyInvestors = false});
 
   @override
   State<AuthorizedProfilesPage> createState() => _AuthorizedProfilesPageState();
@@ -22,6 +24,9 @@ class _AuthorizedProfilesPageState extends State<AuthorizedProfilesPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    if (widget.onlyInvestors) {
+      _tabController.index = 2;
+    }
   }
 
   @override
@@ -49,33 +54,39 @@ class _AuthorizedProfilesPageState extends State<AuthorizedProfilesPage>
         elevation: 0,
         backgroundColor: theme.colorScheme.surface,
         title: Text(
-          "Authorized Profiles",
+          widget.onlyInvestors ? "Investor Linkup" : "Authorized Profiles",
           style: TextStyle(
             color: theme.colorScheme.onSurface,
             fontWeight: FontWeight.bold,
             fontSize: MediaQuery.of(context).size.width >= 600 ? 24 : 20,
           ),
         ),
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: theme.colorScheme.primary,
-          labelColor: theme.colorScheme.primary,
-          unselectedLabelColor: theme.colorScheme.onSurface.withOpacity(0.6),
-          labelStyle: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: MediaQuery.of(context).size.width >= 600 ? 16 : 13,
-          ),
-          tabs: const [
-            Tab(text: "Experts"),
-            Tab(text: "Entrepreneurs"),
-            Tab(text: "Investors"),
-          ],
-        ),
+        bottom: widget.onlyInvestors
+            ? null
+            : TabBar(
+                controller: _tabController,
+                indicatorColor: theme.colorScheme.primary,
+                labelColor: theme.colorScheme.primary,
+                unselectedLabelColor: theme.colorScheme.onSurface.withOpacity(
+                  0.6,
+                ),
+                labelStyle: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: MediaQuery.of(context).size.width >= 600 ? 16 : 13,
+                ),
+                tabs: const [
+                  Tab(text: "Experts"),
+                  Tab(text: "Entrepreneurs"),
+                  Tab(text: "Investors"),
+                ],
+              ),
       ),
       body: provider.isLoading
           ? const Center(child: CircularProgressIndicator())
           : provider.error != null
           ? Center(child: Text("Error: ${provider.error}"))
+          : widget.onlyInvestors
+          ? _buildInvestorList(provider.investors)
           : TabBarView(
               controller: _tabController,
               children: [
@@ -117,6 +128,15 @@ class _AuthorizedProfilesPageState extends State<AuthorizedProfilesPage>
       itemBuilder: (context, i) => _InvestorHorizontalCard(
         investor: list[i],
         onTap: () => _openPublicProfile(list[i].username),
+        onBookTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => InvestorSlotsPage(
+              investorUuid: list[i].uuid,
+              investorName: list[i].displayName,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -299,8 +319,13 @@ class _EntrepreneurHorizontalCard extends StatelessWidget {
 class _InvestorHorizontalCard extends StatelessWidget {
   final InvestorProfile investor;
   final VoidCallback onTap;
+  final VoidCallback onBookTap;
 
-  const _InvestorHorizontalCard({required this.investor, required this.onTap});
+  const _InvestorHorizontalCard({
+    required this.investor,
+    required this.onTap,
+    required this.onBookTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -337,11 +362,37 @@ class _InvestorHorizontalCard extends StatelessWidget {
             ),
           ),
           SizedBox(width: isTablet ? 12 : 8),
-          Flexible(
-            child: _PriceChip(
-              "₹${investor.checkSizeMin.toStringAsFixed(0)} - ₹${investor.checkSizeMax.toStringAsFixed(0)}",
-              small: true,
-            ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _PriceChip(
+                "₹${investor.checkSizeMin.toStringAsFixed(0)} - ₹${investor.checkSizeMax.toStringAsFixed(0)}",
+                small: true,
+              ),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: onBookTap,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Text(
+                    "Book",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

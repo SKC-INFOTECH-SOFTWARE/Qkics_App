@@ -249,8 +249,9 @@ class ProfileHeader extends StatelessWidget {
                 colorScheme,
               ),
 
-            // ================= PUBLIC VIEW ACTIONS =================
-            if (isPublicView && effectiveType == ProfileType.expert)
+            if (isPublicView &&
+                (effectiveType == ProfileType.expert ||
+                    effectiveType == ProfileType.investor))
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: SizedBox(
@@ -314,7 +315,7 @@ class ProfileHeader extends StatelessWidget {
             ),
           ),
 
-        if (type == ProfileType.expert) ...[
+        if (type == ProfileType.expert || type == ProfileType.investor) ...[
           const SizedBox(width: 12),
           Expanded(
             child: SizedBox(

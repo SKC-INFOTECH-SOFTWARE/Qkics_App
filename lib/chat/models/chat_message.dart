@@ -42,6 +42,7 @@ class ChatMessage {
       id: json['id'],
       sender: User(
         id: 0,
+        uuid: '',
         username: senderUsername,
         email: '',
         phone: '',

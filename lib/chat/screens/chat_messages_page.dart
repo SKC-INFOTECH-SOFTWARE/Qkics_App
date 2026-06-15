@@ -164,7 +164,7 @@ class _ChatMessagesPageState extends State<ChatMessagesPage> {
   Widget build(BuildContext context) {
     final currentUser = context.read<ApiProvider>().currentUser;
     final otherUser = widget.room.user.id == currentUser?.id
-        ? widget.room.expert
+        ? widget.room.advisor
         : widget.room.user;
 
     return Scaffold(

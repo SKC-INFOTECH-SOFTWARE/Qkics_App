@@ -26,7 +26,7 @@ class _DocumentDetailSheetState extends State<DocumentDetailSheet> {
   }
 
   Future<void> _fetchDetail() async {
-    if (widget.document.fileUrl != null) {
+    if (widget.document.file != null) {
       setState(() => _detailedDoc = widget.document);
       return;
     }

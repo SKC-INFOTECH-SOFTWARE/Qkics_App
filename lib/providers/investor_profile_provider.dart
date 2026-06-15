@@ -12,6 +12,13 @@ class InvestorProfileProvider extends ChangeNotifier {
   InvestorProfile? get profile => _profile;
   bool get exists => _profile != null;
 
+  /// Returns the best identifier for API calls (uuid if available, otherwise id)
+  String? get investorIdentifier {
+    if (_profile == null) return null;
+    if (_profile!.uuid.isNotEmpty) return _profile!.uuid;
+    return _profile!.id.toString();
+  }
+
   bool _disposed = false;
   bool get mounted => !_disposed;
 
@@ -38,7 +45,11 @@ class InvestorProfileProvider extends ChangeNotifier {
 
     try {
       final res = await dio.get('/api/v1/investors/me/profile/');
+      debugPrint("📡 INVESTOR PROFILE RAW DATA: ${res.data}");
       _profile = InvestorProfile.fromJson(res.data);
+      debugPrint(
+        "✅ INVESTOR PROFILE PARSED: id=${_profile!.id}, uuid='${_profile!.uuid}', name=${_profile!.displayName}",
+      );
     } on DioException catch (e) {
       // ✅ EXPECTED CASE: No investor profile yet
       if (e.response?.statusCode == 404) {

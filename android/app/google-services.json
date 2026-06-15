@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "837583350733",
+    "project_id": "qkics-6b5e0",
+    "storage_bucket": "qkics-6b5e0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:837583350733:android:e6ec139512804cbe0d3284",
+        "android_client_info": {
+          "package_name": "com.skcinfotech.q_kics.q_kics"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAPUWu407lf3gANjHVC-Ql6TBpCjNuLmjk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:q_kics/booking/services/razorpay_service.dart';
-import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../providers/subscription_provider.dart';
@@ -17,78 +15,24 @@ class SubscriptionPlansPage extends StatefulWidget {
 
 class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
   String? _selectedPlanUuid;
-late RazorpayService _razorpayService;
   @override
-void initState() {
-  super.initState();
+  void initState() {
+    super.initState();
 
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    context.read<SubscriptionProvider>().fetchPlans();
-  });
-
-  _razorpayService = RazorpayService(
-    onSuccess: _handlePaymentSuccess,
-    onFailure: _handlePaymentFailure,
-    onExternalWallet: _handleExternalWallet,
-  );
-}
-@override
-void dispose() {
-  _razorpayService.dispose();
-  super.dispose();
-}
-
-void _startPayment(SubscriptionPlan plan) {
-  HapticFeedback.mediumImpact();
-
-  _razorpayService.openCheckout(
-    amount: plan.price.toDouble(),
-    name: "Q-KICS Subscription",
-    description: "${plan.name} Plan",
-    contact: "9999999999", // TODO: Replace with user's actual contact
-    email: "user@email.com", // TODO: Replace with logged user email
-    bookingId: plan.uuid,
-  );
-}
-
-Future<void> _handlePaymentSuccess(
-    PaymentSuccessResponse response) async {
-
-  final provider = context.read<SubscriptionProvider>();
-
-  final selectedPlan = provider.plans.firstWhere(
-    (p) => p.uuid == _selectedPlanUuid,
-  );
-
-  final success = await provider.subscribe(selectedPlan.uuid);
-
-  if (!mounted) return;
-
-  if (success) {
-    _showSuccess(selectedPlan.name);
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(provider.error ?? "Subscription failed")),
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<SubscriptionProvider>().fetchPlans();
+    });
   }
-}
-void _handlePaymentFailure(PaymentFailureResponse response) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(
-        "Payment Failed: ${response.message ?? "Try again"}",
-      ),
-    ),
-  );
-}
 
-void _handleExternalWallet(ExternalWalletResponse response) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text("External Wallet: ${response.walletName}"),
-    ),
-  );
-}
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  void _startPayment(SubscriptionPlan plan) {
+    _handleSubscribe(plan);
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<SubscriptionProvider>();
@@ -113,15 +57,14 @@ void _handleExternalWallet(ExternalWalletResponse response) {
           "Choose Your Plan",
           style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
-           
           ),
         ),
       ),
       body: provider.isLoading && provider.plans.isEmpty
           ? _buildLoading()
           : provider.error != null && provider.plans.isEmpty
-              ? _buildError(provider)
-              : _buildContent(provider, theme, cs),
+          ? _buildError(provider)
+          : _buildContent(provider, theme, cs),
       bottomNavigationBar: _buildBottomBar(provider, theme, cs),
     );
   }
@@ -261,9 +204,7 @@ void _handleExternalWallet(ExternalWalletResponse response) {
             height: 54,
             width: 160,
             child: ElevatedButton(
-              onPressed: provider.isLoading
-    ? null
-    : () => _startPayment(plan),
+              onPressed: provider.isLoading ? null : () => _startPayment(plan),
               style: ElevatedButton.styleFrom(
                 backgroundColor: cs.primary,
                 shape: RoundedRectangleBorder(
@@ -362,10 +303,7 @@ void _handleExternalWallet(ExternalWalletResponse response) {
                 const DataColumn(label: Text("Features")),
                 ...plans.map(
                   (p) => DataColumn(
-                    label: Text(
-                      p.name,
-                      style: TextStyle(color: cs.primary),
-                    ),
+                    label: Text(p.name, style: TextStyle(color: cs.primary)),
                   ),
                 ),
               ],
@@ -397,8 +335,7 @@ void _handleExternalWallet(ExternalWalletResponse response) {
                               ? Icons.check_circle
                               : Icons.cancel_outlined,
                           size: 18,
-                          color:
-                              p.isActive ? Colors.green : Colors.grey,
+                          color: p.isActive ? Colors.green : Colors.grey,
                         ),
                       ),
                     ),
@@ -452,8 +389,7 @@ class _PlanCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           color: cs.surface,
           border: Border.all(
-            color:
-                isSelected ? cs.primary : cs.onSurface.withOpacity(0.5),
+            color: isSelected ? cs.primary : cs.onSurface.withOpacity(0.5),
             width: isSelected ? 2 : 1,
           ),
           boxShadow: [
@@ -508,7 +444,7 @@ class _PlanCard extends StatelessWidget {
               "₹${plan.price}",
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: Colors.green, 
+                color: Colors.green,
               ),
             ),
             Text(
@@ -542,13 +478,12 @@ class _PlanCard extends StatelessWidget {
                 isSelected
                     ? Icons.check_circle_rounded
                     : Icons.radio_button_unchecked,
-                color:
-                    isSelected ? cs.primary : cs.onSurface.withOpacity(0.4),
+                color: isSelected ? cs.primary : cs.onSurface.withOpacity(0.4),
               ),
             ),
           ],
         ),
-      ), 
+      ),
     );
   }
 
@@ -559,9 +494,7 @@ class _PlanCard extends StatelessWidget {
         children: [
           Icon(icon, size: 18, color: Colors.grey),
           const SizedBox(width: 10),
-          Expanded(
-            child: Text(text, style: const TextStyle(fontSize: 14)),
-          ),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 14))),
         ],
       ),
     );

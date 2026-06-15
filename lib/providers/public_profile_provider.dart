@@ -54,7 +54,6 @@ class PublicProfileProvider extends ChangeNotifier {
     isLoading = false;
     notifyListeners();
   }
-
   // ================= ERROR PARSER =================
   String _parseDioError(DioException e) {
     if (e.response != null) {

@@ -456,8 +456,8 @@ class _CommentTileState extends State<CommentTile> {
                             children: [
                               Icon(
                                 widget.comment.isLiked
-                                    ? Icons.favorite
-                                    : Icons.favorite_border,
+                                    ? Icons.thumb_up
+                                    : Icons.thumb_up_outlined,
                                 color: widget.comment.isLiked
                                     ? Colors.red
                                     : secondary,

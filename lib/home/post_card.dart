@@ -10,6 +10,8 @@ import 'package:q_kics/models/post.dart';
 import 'package:q_kics/home/comment_sheet.dart';
 import 'package:q_kics/home/post_detail_page.dart';
 import 'package:q_kics/profile/ui/widgets/public/public_profile_page.dart';
+import 'package:q_kics/home/create_post_page.dart';
+import 'package:q_kics/widgets/video_player_widget.dart';
 
 class PostCard extends StatefulWidget {
   final Post post;
@@ -23,10 +25,19 @@ class PostCard extends StatefulWidget {
 
 class _PostCardState extends State<PostCard> {
   final ValueNotifier<bool> _isExpanded = ValueNotifier(false);
+  late PageController _mediaPageController;
+  int _currentMediaIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _mediaPageController = PageController();
+  }
 
   @override
   void dispose() {
     _isExpanded.dispose();
+    _mediaPageController.dispose();
     super.dispose();
   }
 
@@ -74,7 +85,7 @@ class _PostCardState extends State<PostCard> {
       child: ClipOval(
         child: CachedNetworkImage(
           imageUrl: imageUrl,
-          fit: BoxFit.cover,
+          fit: BoxFit.contain,
           width: radius * 2,
           height: radius * 2,
           memCacheWidth: (radius * 2 * MediaQuery.of(context).devicePixelRatio)
@@ -198,6 +209,76 @@ class _PostCardState extends State<PostCard> {
                     ),
                   ),
                 ),
+                if (post.author.id == widget.currentUserId)
+                  PopupMenuButton<String>(
+                    onSelected: (value) async {
+                      if (value == 'edit') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CreatePostPage(postToEdit: post),
+                          ),
+                        );
+                      } else if (value == 'delete') {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text("Delete Post"),
+                            content: const Text(
+                              "Are you sure you want to delete this post?",
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, false),
+                                child: const Text("Cancel"),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, true),
+                                child: const Text(
+                                  "Delete",
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (confirm == true && mounted) {
+                          final api = context.read<ApiProvider>();
+                          final success = await api.deletePost(post.id);
+                          if (success && mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Post deleted successfully"),
+                              ),
+                            );
+                          }
+                        }
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit, size: 20),
+                            SizedBox(width: 8),
+                            Text("Edit"),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete, color: Colors.red, size: 20),
+                            SizedBox(width: 8),
+                            Text("Delete", style: TextStyle(color: Colors.red)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             ),
           ),
@@ -278,52 +359,7 @@ class _PostCardState extends State<PostCard> {
                     .toList(),
               ),
             ),
-          if (post.image != null && post.image!.trim().isNotEmpty) ...[
-            const SizedBox(height: 12),
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => PostDetailPage(
-                      post: post,
-                      currentUserId: widget.currentUserId,
-                    ),
-                  ),
-                );
-              },
-              child: Hero(
-                tag: 'post_image_${post.id}',
-                child: CachedNetworkImage(
-                  imageUrl: post.image!,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  memCacheWidth: 800, // Balanced for quality and memory
-                  cacheKey: post.image, // Ensure stable cache hitting
-                  fadeInDuration: const Duration(milliseconds: 400),
-                  placeholder: (context, url) => Shimmer.fromColors(
-                    baseColor: Colors.grey[300]!,
-                    highlightColor: Colors.grey[100]!,
-                    child: Container(
-                      height: 280,
-                      decoration: const BoxDecoration(color: Colors.white),
-                    ),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    height: 280,
-                    decoration: BoxDecoration(color: Colors.grey[200]),
-                    child: const Center(
-                      child: Icon(
-                        Icons.broken_image_outlined,
-                        size: 50,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
+          _buildMedia(post, scale),
           const SizedBox(height: 10),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -346,13 +382,15 @@ class _PostCardState extends State<PostCard> {
                     child: Row(
                       children: [
                         Icon(
-                          post.isLiked ? Icons.favorite : Icons.favorite_border,
+                          post.isLiked
+                              ? Icons.thumb_up
+                              : Icons.thumb_up_outlined,
                           color: post.isLiked ? Colors.red : Colors.grey[600],
                           size: 20 * scale,
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          "${post.totalLikes} Upvote${post.totalLikes == 1 ? '' : 's'}",
+                          "${post.totalLikes} Like${post.totalLikes == 1 ? '' : 's'}",
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
                             color: post.isLiked ? Colors.red : Colors.grey[600],
@@ -382,7 +420,7 @@ class _PostCardState extends State<PostCard> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        "${post.totalComments} Answer${post.totalComments == 1 ? '' : 's'}",
+                        "${post.totalComments} Comment${post.totalComments == 1 ? '' : 's'}",
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 14 * scale,
@@ -397,6 +435,153 @@ class _PostCardState extends State<PostCard> {
           ),
           const SizedBox(height: 8),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMedia(Post post, double scale) {
+    if (post.media.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      children: [
+        const SizedBox(height: 12),
+        AspectRatio(
+          aspectRatio: 0.9, // Instagram square style
+          child: Stack(
+            children: [
+              PageView.builder(
+                controller: _mediaPageController,
+                itemCount: post.media.length,
+                onPageChanged: (index) {
+                  setState(() {
+                    _currentMediaIndex = index;
+                  });
+                },
+                itemBuilder: (context, index) {
+                  final media = post.media[index];
+                  return _buildMediaItem(media, post.id);
+                },
+              ),
+              // Page Count Overlay (Top Right)
+              if (post.media.length > 1)
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${_currentMediaIndex + 1}/${post.media.length}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              // Dots Indicator Overlay (Bottom Center)
+              if (post.media.length > 1)
+                Positioned(
+                  bottom: 12,
+                  left: 0,
+                  right: 0,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(
+                      post.media.length,
+                      (index) => AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: _currentMediaIndex == index ? 8 : 6,
+                        height: _currentMediaIndex == index ? 8 : 6,
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: _currentMediaIndex == index
+                              ? Theme.of(context).colorScheme.primary
+                              : Colors.white.withOpacity(0.5),
+                          boxShadow: [
+                            if (_currentMediaIndex == index)
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 2,
+                                spreadRadius: 1,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMediaItem(PostMedia media, int postId) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PostDetailPage(
+              post: widget.post,
+              currentUserId: widget.currentUserId,
+            ),
+          ),
+        );
+      },
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(0),
+        child: media.isVideo
+            ? VideoPlayerWidget(
+                videoUrl: media.file,
+                aspectRatio: 0.9,
+                fit: BoxFit.contain,
+                autoPlay: true,
+                mute: true,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => PostDetailPage(
+                        post: widget.post,
+                        currentUserId: widget.currentUserId,
+                      ),
+                    ),
+                  );
+                },
+              )
+            : CachedNetworkImage(
+                imageUrl: media.file,
+
+                fit: BoxFit.contain,
+                width: double.infinity,
+                memCacheWidth: 800,
+                placeholder: (context, url) => Shimmer.fromColors(
+                  baseColor: Colors.grey[300]!,
+                  highlightColor: Colors.grey[100]!,
+                  child: Container(color: Colors.white),
+                ),
+                errorWidget: (context, url, error) => Container(
+                  color: Colors.grey[200],
+                  child: const Center(
+                    child: Icon(
+                      Icons.broken_image_outlined,
+                      size: 50,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ),
+              ),
       ),
     );
   }

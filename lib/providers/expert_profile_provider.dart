@@ -111,6 +111,12 @@ bool get initialized => _initialized;
         note ?? 'Submitting expert profile for admin review',
       );
 
+      // Optimistically update status so UI reflects change immediately
+      if (profile != null) {
+        profile = profile!.copyWith(applicationStatus: 'pending');
+        notifyListeners();
+      }
+
       await fetchExpertProfile();
     } catch (e) {
       debugPrint("Expert submission failed (already handled globally): $e");

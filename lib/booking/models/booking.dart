@@ -22,7 +22,9 @@ class Booking {
   final DateTime? completedAt;
   final DateTime? declinedAt;
   final DateTime? cancelledAt;
+  final String sessionType; // "CHAT" or "VIDEO_CALL"
   final int? chatRoomId;
+  final String? callRoomId;
   final int rescheduleCount;
   final String? cancellationReason;
   final String? declineReason;
@@ -54,7 +56,9 @@ class Booking {
     this.completedAt,
     this.declinedAt,
     this.cancelledAt,
+    this.sessionType = 'VIDEO_CALL',
     this.chatRoomId,
+    this.callRoomId,
     required this.rescheduleCount,
     this.cancellationReason,
     this.declineReason,
@@ -106,7 +110,9 @@ class Booking {
       cancelledAt: json['cancelled_at'] != null
           ? DateTime.parse(json['cancelled_at'])
           : null,
+      sessionType: json['session_type'] ?? 'VIDEO_CALL',
       chatRoomId: _parseInt(json['chat_room_id']),
+      callRoomId: json['call_room_id']?.toString(),
       rescheduleCount: int.parse(json['reschedule_count'].toString()),
       cancellationReason: json['cancellation_reason'],
       declineReason: json['decline_reason'],
@@ -122,4 +128,6 @@ class Booking {
   bool get isCompleted => status == 'COMPLETED';
   bool get isDeclined => status == 'DECLINED';
   bool get isCancelled => status == 'CANCELLED';
+  bool get isChat => sessionType == 'CHAT';
+  bool get isVideoCall => sessionType == 'VIDEO_CALL';
 }

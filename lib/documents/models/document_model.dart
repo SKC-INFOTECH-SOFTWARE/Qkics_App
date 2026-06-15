@@ -1,45 +1,45 @@
 class Document {
-  final String uuid;
+  final String? uuid;
   final String title;
   final String description;
   final String accessType;
   final bool isActive;
-  final DateTime createdAt;
-  final String? fileUrl;
+  final DateTime? createdAt;
+  final String? file;
 
   Document({
-    required this.uuid,
+    this.uuid,
     required this.title,
     required this.description,
     required this.accessType,
     this.isActive = true,
-    required this.createdAt,
-    this.fileUrl,
+    this.createdAt,
+    this.file,
   });
 
   factory Document.fromJson(Map<String, dynamic> json) {
     return Document(
-      uuid: json['uuid'] ?? '',
+      uuid: json['uuid'],
       title: json['title'] ?? '',
       description: json['description'] ?? '',
       accessType: json['access_type'] ?? 'FREE',
       isActive: json['is_active'] ?? true,
-      createdAt: DateTime.parse(
-        json['created_at'] ?? DateTime.now().toIso8601String(),
-      ),
-      fileUrl: json['file_url'],
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
+          : null,
+      file: json['file'],
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'uuid': uuid,
+      if (uuid != null) 'uuid': uuid,
       'title': title,
       'description': description,
       'access_type': accessType,
       'is_active': isActive,
-      'created_at': createdAt.toIso8601String(),
-      'file_url': fileUrl,
+      if (createdAt != null) 'created_at': createdAt?.toIso8601String(),
+      if (file != null) 'file': file,
     };
   }
 }

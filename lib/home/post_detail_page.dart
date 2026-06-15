@@ -7,6 +7,7 @@ import 'package:q_kics/providers/api_provider.dart';
 import 'package:q_kics/models/post.dart';
 import 'package:q_kics/home/comment_sheet.dart';
 import 'package:photo_view/photo_view.dart';
+import 'package:q_kics/widgets/video_player_widget.dart';
 
 class PostDetailPage extends StatefulWidget {
   final Post post;
@@ -27,6 +28,8 @@ class _PostDetailPageState extends State<PostDetailPage>
   late Post post;
   late ApiProvider api;
   late AnimationController _heartController;
+  late PageController _pageController;
+  int _currentPage = 0;
 
   bool _showUI = true;
   bool _showHeart = false;
@@ -41,11 +44,13 @@ class _PostDetailPageState extends State<PostDetailPage>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
+    _pageController = PageController();
   }
 
   @override
   void dispose() {
     _heartController.dispose();
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -89,25 +94,102 @@ class _PostDetailPageState extends State<PostDetailPage>
       backgroundColor: bgColor,
       body: Stack(
         children: [
-          // Full-screen zoomable image
+          // Full-screen zoomable media
           Positioned.fill(
             child: GestureDetector(
               onTap: _toggleUI,
               onDoubleTap: _toggleLike,
-              child: post.image != null
-                  ? PhotoView(
-                      imageProvider: CachedNetworkImageProvider(post.image!),
-                      heroAttributes: PhotoViewHeroAttributes(
-                        tag: 'post_image_${post.id}',
-                      ),
-                      backgroundDecoration: BoxDecoration(color: bgColor),
-                      minScale: PhotoViewComputedScale.contained,
-                      maxScale: 4.0,
-                      gestureDetectorBehavior: HitTestBehavior.opaque,
+              child: post.media.isNotEmpty
+                  ? PageView.builder(
+                      controller: _pageController,
+                      itemCount: post.media.length,
+                      onPageChanged: (idx) =>
+                          setState(() => _currentPage = idx),
+                      itemBuilder: (context, index) {
+                        final media = post.media[index];
+                        final isVideo = media.isVideo;
+
+                        return Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            isVideo
+                                ? VideoPlayerWidget(
+                                    videoUrl: media.file,
+                                    autoPlay: true,
+                                    mute: false,
+                                    fit: BoxFit.contain,
+                                  )
+                                : PhotoView(
+                                    imageProvider: CachedNetworkImageProvider(
+                                      media.file,
+                                    ),
+                                    backgroundDecoration: BoxDecoration(
+                                      color: bgColor,
+                                    ),
+                                    minScale: PhotoViewComputedScale.contained,
+                                    maxScale: 4.0,
+                                  ),
+                          ],
+                        );
+                      },
                     )
                   : Container(color: bgColor),
             ),
           ),
+
+          // Page Indicator
+          if (post.media.length > 1 && _showUI)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 60,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black45,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${_currentPage + 1} / ${post.media.length}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // Dot Indicators (Bottom portion of media)
+          if (post.media.length > 1 && _showUI)
+            Positioned(
+              bottom: 300 + 40, // Positioned above the info sheet
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(post.media.length, (index) {
+                  final isSelected = _currentPage == index;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    margin: const EdgeInsets.symmetric(horizontal: 2.5),
+                    height: 6,
+                    width: isSelected ? 12 : 6,
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? colorScheme.primary
+                          : colorScheme.primary.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  );
+                }),
+              ),
+            ),
 
           // Double-tap heart animation
           if (_showHeart)
@@ -119,7 +201,11 @@ class _PostDetailPageState extends State<PostDetailPage>
                     curve: Curves.elasticOut,
                   ),
                 ),
-                child: const Icon(Icons.favorite, color: Colors.red, size: 110),
+                child: const Icon(
+                  Icons.favorite,
+                  color: Colors.white,
+                  size: 90,
+                ),
               ),
             ),
 
@@ -297,8 +383,8 @@ class _PostDetailPageState extends State<PostDetailPage>
                               children: [
                                 Icon(
                                   post.isLiked
-                                      ? Icons.favorite
-                                      : Icons.favorite_border,
+                                      ? Icons.thumb_up
+                                      : Icons.thumb_up_outlined,
                                   color: post.isLiked ? Colors.red : textColor,
                                   size: 24,
                                 ),
@@ -306,7 +392,7 @@ class _PostDetailPageState extends State<PostDetailPage>
                                 Text(
                                   post.totalLikes > 0
                                       ? '${post.totalLikes}'
-                                      : 'Upvote',
+                                      : 'Like',
                                   style: TextStyle(
                                     color: textColor,
                                     fontSize: 14,
@@ -338,7 +424,7 @@ class _PostDetailPageState extends State<PostDetailPage>
                                 Text(
                                   post.totalComments > 0
                                       ? '${post.totalComments}'
-                                      : 'Answer',
+                                      : 'Comment',
                                   style: TextStyle(
                                     color: textColor,
                                     fontSize: 14,

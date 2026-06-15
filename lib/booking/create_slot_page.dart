@@ -14,8 +14,14 @@ class CreateSlotPage extends StatefulWidget {
 class _CreateSlotPageState extends State<CreateSlotPage> {
   DateTime? start;
   DateTime? end;
-  final TextEditingController priceCtrl = TextEditingController();
-  bool approval = true;
+
+  final _chatPriceCtrl = TextEditingController();
+  final _videoCallPriceCtrl = TextEditingController();
+  bool _isChatAvailable = true;
+  bool _isVideoCallAvailable = true;
+  bool _requiresApproval = true;
+
+  ExpertSlot? _editingSlot;
 
   @override
   void initState() {
@@ -27,17 +33,15 @@ class _CreateSlotPageState extends State<CreateSlotPage> {
 
   @override
   void dispose() {
-    priceCtrl.dispose();
+    _chatPriceCtrl.dispose();
+    _videoCallPriceCtrl.dispose();
     super.dispose();
   }
 
-  ExpertSlot? _editingSlot;
-
-  // ================= DATE PICKERS =================
+  // ── Date pickers ─────────────────────────────────────────────────────────
 
   Future<void> _pickStartDateTime() async {
     final now = DateTime.now();
-
     final date = await showDatePicker(
       context: context,
       firstDate: now,
@@ -45,129 +49,187 @@ class _CreateSlotPageState extends State<CreateSlotPage> {
       initialDate: start ?? now,
     );
     if (date == null) return;
-
     final time = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.fromDateTime(
-        start ?? now.add(const Duration(minutes: 15)),
-      ),
+      initialTime: TimeOfDay.fromDateTime(start ?? now.add(const Duration(minutes: 15))),
     );
     if (time == null) return;
-
-    final picked = DateTime(
-      date.year,
-      date.month,
-      date.day,
-      time.hour,
-      time.minute,
-    );
-
-    if (picked.isBefore(now)) {
-      _showMessage("Start time must be in the future");
-      return;
-    }
-
+    final picked = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    if (picked.isBefore(now)) { _showMessage('Start time must be in the future'); return; }
     setState(() {
       start = picked;
-      // If end is before new start, clear it
-      if (end != null && end!.isBefore(start!)) {
-        end = null;
-      }
+      if (end != null && end!.isBefore(start!)) end = null;
     });
   }
 
   Future<void> _pickEndTime() async {
-    if (start == null) {
-      _showMessage("Select start time first");
-      return;
-    }
-
+    if (start == null) { _showMessage('Select start time first'); return; }
     final time = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.fromDateTime(
-        end ?? start!.add(const Duration(minutes: 30)),
-      ),
+      initialTime: TimeOfDay.fromDateTime(end ?? start!.add(const Duration(minutes: 30))),
     );
     if (time == null) return;
-
-    final picked = DateTime(
-      start!.year,
-      start!.month,
-      start!.day,
-      time.hour,
-      time.minute,
-    );
-
-    if (!picked.isAfter(start!)) {
-      _showMessage("End time must be after start time");
-      return;
-    }
-
+    final picked = DateTime(start!.year, start!.month, start!.day, time.hour, time.minute);
+    if (!picked.isAfter(start!)) { _showMessage('End time must be after start time'); return; }
     setState(() => end = picked);
   }
 
-  // ================= UI =================
+  // ── Submit ────────────────────────────────────────────────────────────────
+
+  Future<void> _submit() async {
+    if (start == null || end == null) { _showMessage('Select start & end time'); return; }
+    if (!_isChatAvailable && !_isVideoCallAvailable) {
+      _showMessage('Enable at least one session type'); return;
+    }
+
+    final chatPrice = _isChatAvailable ? (double.tryParse(_chatPriceCtrl.text.trim()) ?? 0) : 0.0;
+    final videoPrice = _isVideoCallAvailable ? (double.tryParse(_videoCallPriceCtrl.text.trim()) ?? 0) : 0.0;
+
+    if (_isChatAvailable && chatPrice <= 0) { _showMessage('Enter valid chat price'); return; }
+    if (_isVideoCallAvailable && videoPrice <= 0) { _showMessage('Enter valid video call price'); return; }
+
+    final provider = context.read<BookingProvider>();
+
+    try {
+      if (_editingSlot != null) {
+        await provider.updateSlot(
+          slotUuid: _editingSlot!.uuid,
+          start: start!,
+          end: end!,
+          chatPrice: chatPrice,
+          videoCallPrice: videoPrice,
+          isChatAvailable: _isChatAvailable,
+          isVideoCallAvailable: _isVideoCallAvailable,
+          requiresApproval: _requiresApproval,
+        );
+        if (!mounted) return;
+        _showMessage('Slot updated successfully');
+      } else {
+        await provider.createSlot(
+          start: start!,
+          end: end!,
+          duration: end!.difference(start!).inMinutes,
+          chatPrice: chatPrice,
+          videoCallPrice: videoPrice,
+          isChatAvailable: _isChatAvailable,
+          isVideoCallAvailable: _isVideoCallAvailable,
+          requiresApproval: _requiresApproval,
+        );
+        if (!mounted) return;
+        _showMessage('Slot created successfully');
+      }
+      _clearForm();
+    } catch (e) {
+      if (!mounted) return;
+      _showMessage('Error: $e');
+    }
+  }
+
+  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<BookingProvider>();
     final theme = Theme.of(context);
+    final cs = theme.colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Manage Slots"), centerTitle: true),
+      appBar: AppBar(title: const Text('Manage Slots'), centerTitle: true),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ================= CREATE / EDIT FORM =================
+            // ── Form ──────────────────────────────────────────────────────
             _SectionCard(
-              title: _editingSlot == null ? "Create Slot" : "Edit Slot",
+              title: _editingSlot == null ? 'Create Slot' : 'Edit Slot',
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _TimeField(
                     icon: Icons.play_arrow,
-                    label: "Start",
+                    label: 'Start',
                     value: start == null
-                        ? "Select start date & time"
+                        ? 'Select start date & time'
                         : DateFormat('dd MMM yyyy • hh:mm a').format(start!),
                     onTap: _pickStartDateTime,
                   ),
                   const SizedBox(height: 12),
                   _TimeField(
                     icon: Icons.stop,
-                    label: "End",
+                    label: 'End',
                     value: end == null
-                        ? "Select end time"
+                        ? 'Select end time'
                         : DateFormat('hh:mm a').format(end!),
                     onTap: _pickEndTime,
                   ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: priceCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: "Price",
-                      prefixText: "₹ ",
-                      border: OutlineInputBorder(),
+                  const SizedBox(height: 16),
+
+                  // Chat pricing
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _isChatAvailable,
+                    onChanged: (v) => setState(() => _isChatAvailable = v),
+                    title: Row(
+                      children: [
+                        Icon(Icons.chat_bubble_outline, size: 18, color: cs.primary),
+                        const SizedBox(width: 8),
+                        const Text('Chat Session'),
+                      ],
                     ),
                   ),
-                  SwitchListTile(
-                    value: approval,
-                    onChanged: (v) => setState(() => approval = v),
-                    title: const Text("Requires admin approval"),
-                  ),
-                  if (_editingSlot != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: TextButton.icon(
-                        onPressed: _clearForm,
-                        icon: const Icon(Icons.close),
-                        label: const Text("Cancel Edit"),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.red,
-                        ),
+                  if (_isChatAvailable) ...[
+                    TextField(
+                      controller: _chatPriceCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Chat Price',
+                        prefixText: '₹ ',
+                        border: OutlineInputBorder(),
                       ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+
+                  // Video call pricing
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _isVideoCallAvailable,
+                    onChanged: (v) => setState(() => _isVideoCallAvailable = v),
+                    title: Row(
+                      children: [
+                        Icon(Icons.videocam_outlined, size: 18, color: cs.primary),
+                        const SizedBox(width: 8),
+                        const Text('Video Call Session'),
+                      ],
+                    ),
+                  ),
+                  if (_isVideoCallAvailable) ...[
+                    TextField(
+                      controller: _videoCallPriceCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Video Call Price',
+                        prefixText: '₹ ',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                  ],
+
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _requiresApproval,
+                    onChanged: (v) => setState(() => _requiresApproval = v),
+                    title: const Text('Requires Approval'),
+                  ),
+
+                  if (_editingSlot != null)
+                    TextButton.icon(
+                      onPressed: _clearForm,
+                      icon: const Icon(Icons.close),
+                      label: const Text('Cancel Edit'),
+                      style: TextButton.styleFrom(foregroundColor: Colors.red),
                     ),
                 ],
               ),
@@ -175,12 +237,10 @@ class _CreateSlotPageState extends State<CreateSlotPage> {
 
             const SizedBox(height: 24),
 
-            // ================= SLOT LIST =================
+            // ── Slot list ─────────────────────────────────────────────────
             Text(
-              "Your Slots",
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+              'Your Slots',
+              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
 
@@ -190,7 +250,7 @@ class _CreateSlotPageState extends State<CreateSlotPage> {
               const Center(
                 child: Padding(
                   padding: EdgeInsets.all(24),
-                  child: Text("No slots created yet"),
+                  child: Text('No slots created yet'),
                 ),
               )
             else
@@ -201,20 +261,16 @@ class _CreateSlotPageState extends State<CreateSlotPage> {
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (_, i) {
                   final slot = provider.slots[i];
-                  final booked = !slot.isAvailable;
                   final isEditing = _editingSlot?.uuid == slot.uuid;
 
                   return Card(
                     color: isEditing
-                        ? theme.colorScheme.primaryContainer.withOpacity(0.3)
+                        ? cs.primaryContainer.withOpacity(0.3)
                         : null,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                       side: isEditing
-                          ? BorderSide(
-                              color: theme.colorScheme.primary,
-                              width: 2,
-                            )
+                          ? BorderSide(color: cs.primary, width: 2)
                           : BorderSide.none,
                     ),
                     child: Padding(
@@ -223,27 +279,52 @@ class _CreateSlotPageState extends State<CreateSlotPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            DateFormat(
-                              'dd MMM yyyy',
-                            ).format(slot.startDateTime),
+                            DateFormat('dd MMM yyyy').format(slot.startDateTime),
                             style: theme.textTheme.labelMedium,
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            "${DateFormat.jm().format(slot.startDateTime)} - "
-                            "${DateFormat.jm().format(slot.endDateTime)}",
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
+                            '${DateFormat.jm().format(slot.startDateTime)} — '
+                            '${DateFormat.jm().format(slot.endDateTime)}',
+                            style: theme.textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w600),
                           ),
-                          const SizedBox(height: 8),
-                          Row(
+                          const SizedBox(height: 10),
+                          // Pricing chips
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
                             children: [
-                              _Chip("₹${slot.price}"),
-                              const SizedBox(width: 8),
-                              _Chip("${slot.durationMinutes} mins"),
-                              const Spacer(),
-                              _StatusBadge(booked: booked),
+                              if (slot.isChatAvailable)
+                                _PriceChip(
+                                  icon: Icons.chat_bubble_outline,
+                                  label: '₹${slot.chatPrice.toStringAsFixed(0)}',
+                                  color: Colors.blue,
+                                )
+                              else
+                                _PriceChip(
+                                  icon: Icons.chat_bubble_outline,
+                                  label: 'Chat off',
+                                  color: Colors.grey,
+                                ),
+                              if (slot.isVideoCallAvailable)
+                                _PriceChip(
+                                  icon: Icons.videocam_outlined,
+                                  label: '₹${slot.videoCallPrice.toStringAsFixed(0)}',
+                                  color: Colors.green,
+                                )
+                              else
+                                _PriceChip(
+                                  icon: Icons.videocam_off_outlined,
+                                  label: 'Video off',
+                                  color: Colors.grey,
+                                ),
+                              _PriceChip(
+                                icon: Icons.timer_outlined,
+                                label: '${slot.durationMinutes} min',
+                                color: cs.primary,
+                              ),
+                              _StatusChip(slot: slot),
                             ],
                           ),
                           const SizedBox(height: 12),
@@ -252,8 +333,8 @@ class _CreateSlotPageState extends State<CreateSlotPage> {
                               Expanded(
                                 child: OutlinedButton.icon(
                                   icon: const Icon(Icons.edit),
-                                  label: const Text("Edit"),
-                                  onPressed: booked || isEditing
+                                  label: const Text('Edit'),
+                                  onPressed: slot.isBooked || isEditing
                                       ? null
                                       : () => _populateForm(slot),
                                 ),
@@ -262,17 +343,15 @@ class _CreateSlotPageState extends State<CreateSlotPage> {
                               Expanded(
                                 child: OutlinedButton.icon(
                                   icon: const Icon(Icons.delete),
-                                  label: const Text("Delete"),
+                                  label: const Text('Delete'),
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: Colors.red,
                                   ),
-                                  onPressed: booked
+                                  onPressed: slot.isBooked
                                       ? null
                                       : () async {
-                                          final ok = await _confirm(
-                                            "Delete Slot?",
-                                          );
-                                          if (ok) {
+                                          final ok = await _confirm('Delete Slot?');
+                                          if (ok && mounted) {
                                             await context
                                                 .read<BookingProvider>()
                                                 .deleteSlot(slot.uuid);
@@ -293,59 +372,17 @@ class _CreateSlotPageState extends State<CreateSlotPage> {
           ],
         ),
       ),
-
-      // ================= CREATE / UPDATE BUTTON =================
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.all(16),
         child: SizedBox(
           height: 52,
           child: ElevatedButton(
-            onPressed: provider.isLoading
-                ? null
-                : () async {
-                    if (start == null || end == null) {
-                      _showMessage("Select start & end time");
-                      return;
-                    }
-
-                    final price = double.tryParse(priceCtrl.text.trim());
-                    if (price == null || price <= 0) {
-                      _showMessage("Enter valid price");
-                      return;
-                    }
-
-                    if (_editingSlot != null) {
-                      // UPDATE
-                      await provider.updateSlot(
-                        slotUuid: _editingSlot!.uuid,
-                        start: start!,
-                        end: end!,
-                        price: price,
-                        requiresApproval: approval,
-                      );
-                      _clearForm();
-                      _showMessage("Slot updated successfully");
-                    } else {
-                      // CREATE
-                      await provider.createSlot(
-                        start: start!,
-                        end: end!,
-                        duration: end!.difference(start!).inMinutes,
-                        price: price,
-                        requiresApproval: approval,
-                      );
-                      _clearForm();
-                      _showMessage("Slot created successfully");
-                    }
-                  },
+            onPressed: provider.isLoading ? null : _submit,
             child: provider.isLoading
                 ? const CircularProgressIndicator(color: Colors.white)
                 : Text(
-                    _editingSlot != null ? "Update Slot" : "Create Slot",
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    _editingSlot != null ? 'Update Slot' : 'Create Slot',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
           ),
         ),
@@ -353,17 +390,19 @@ class _CreateSlotPageState extends State<CreateSlotPage> {
     );
   }
 
-  // ================= HELPERS =================
+  // ── Helpers ───────────────────────────────────────────────────────────────
 
   void _populateForm(ExpertSlot slot) {
     setState(() {
       _editingSlot = slot;
       start = slot.startDateTime;
       end = slot.endDateTime;
-      priceCtrl.text = slot.price.toString();
-      approval = slot.requiresApproval;
+      _chatPriceCtrl.text = slot.chatPrice.toStringAsFixed(0);
+      _videoCallPriceCtrl.text = slot.videoCallPrice.toStringAsFixed(0);
+      _isChatAvailable = slot.isChatAvailable;
+      _isVideoCallAvailable = slot.isVideoCallAvailable;
+      _requiresApproval = slot.requiresApproval;
     });
-    // Optional: Scroll to top
   }
 
   void _clearForm() {
@@ -371,44 +410,41 @@ class _CreateSlotPageState extends State<CreateSlotPage> {
       _editingSlot = null;
       start = null;
       end = null;
-      priceCtrl.clear();
-      approval = true;
+      _chatPriceCtrl.clear();
+      _videoCallPriceCtrl.clear();
+      _isChatAvailable = true;
+      _isVideoCallAvailable = true;
+      _requiresApproval = true;
     });
   }
 
-  Future<bool> _confirm(String title) async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: Text(title),
-            content: const Text("Are you sure?"),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text("Cancel"),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text("Confirm"),
-              ),
-            ],
-          ),
-        ) ??
-        false;
-  }
+  Future<bool> _confirm(String title) async =>
+      await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text(title),
+          content: const Text('Are you sure?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Confirm'),
+            ),
+          ],
+        ),
+      ) ??
+      false;
 
-  void _showMessage(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
+  void _showMessage(String msg) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 }
 
-//////////////////////////////////////////////////////////////
-/// EDIT SLOT BOTTOM SHEET
-//////////////////////////////////////////////////////////////
-
-//////////////////////////////////////////////////////////////
-/// SMALL UI WIDGETS
-//////////////////////////////////////////////////////////////
+// ─────────────────────────────────────────────────────────────────────────────
+// Small widgets
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _SectionCard extends StatelessWidget {
   final String title;
@@ -426,9 +462,10 @@ class _SectionCard extends StatelessWidget {
           children: [
             Text(
               title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
             child,
@@ -483,44 +520,54 @@ class _TimeField extends StatelessWidget {
   }
 }
 
-class _Chip extends StatelessWidget {
-  final String text;
-  const _Chip(this.text);
+class _PriceChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  const _PriceChip({required this.icon, required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(text, style: const TextStyle(fontSize: 12)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 4),
+          Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600)),
+        ],
+      ),
     );
   }
 }
 
-class _StatusBadge extends StatelessWidget {
-  final bool booked;
-  const _StatusBadge({required this.booked});
+class _StatusChip extends StatelessWidget {
+  final ExpertSlot slot;
+  const _StatusChip({required this.slot});
 
   @override
   Widget build(BuildContext context) {
+    final String label;
+    final Color color;
+    if (slot.isBooked) {
+      label = 'Booked'; color = Colors.red;
+    } else {
+      label = 'Available'; color = Colors.green;
+    }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: booked
-            ? Colors.red.withOpacity(0.1)
-            : Colors.green.withOpacity(0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        booked ? "Booked" : "Available",
-        style: TextStyle(
-          fontSize: 12,
-          color: booked ? Colors.red : Colors.green,
-          fontWeight: FontWeight.w600,
-        ),
+        label,
+        style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600),
       ),
     );
   }

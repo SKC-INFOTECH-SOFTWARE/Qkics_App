@@ -1,5 +1,5 @@
-// lib/providers/api_provider.dart
 import 'dart:io';
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -12,6 +12,10 @@ import 'package:q_kics/models/tag.dart';
 import 'package:q_kics/models/user.dart';
 import 'package:q_kics/Network/global_error_handler.dart';
 import 'package:q_kics/Network/server_response_page.dart';
+import 'package:q_kics/services/push_notification_service.dart';
+import 'package:q_kics/services/notification_service.dart';
+import 'package:q_kics/providers/notification_provider.dart';
+import 'package:provider/provider.dart';
 
 class ApiProvider with ChangeNotifier {
   // Singleton
@@ -62,6 +66,16 @@ class ApiProvider with ChangeNotifier {
   bool get isLoadingMore => _isLoadingMore;
   bool get hasMore => _hasMore;
   String? get selectedTag => _selectedTag;
+
+  // Knowledge Hub Posts
+  List<Post> _knowledgeHubPosts = [];
+  List<Post> get knowledgeHubPosts => _knowledgeHubPosts;
+  String? _khNextCursor;
+  bool _khIsLoadingMore = false;
+  bool _khHasMore = true;
+  bool get khIsLoadingMore => _khIsLoadingMore;
+  bool get khHasMore => _khHasMore;
+
   bool mounted = true;
 
   // For robust token refresh
@@ -84,8 +98,8 @@ class ApiProvider with ChangeNotifier {
   Future<void> init() async {
     _dio = Dio(
       BaseOptions(
-         baseUrl: "https://qkicsbackend.matchb.online",
-      //baseUrl: "http://192.168.0.123:8000", 
+       //baseUrl: "https://qkicsbackend.matchb.online",
+       baseUrl: "http://192.168.0.123:8000",  
         connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 15),
         headers: {
@@ -109,6 +123,10 @@ class ApiProvider with ChangeNotifier {
     _accessToken = await _storage.read(key: 'access_token');
 
     _setupInterceptors();
+
+    // Set up API service for push notifications
+    PushNotificationService.instance.setApiService(NotificationService(_dio));
+
     notifyListeners();
   }
 
@@ -201,38 +219,42 @@ class ApiProvider with ChangeNotifier {
     _refreshCompleter = null;
 
     return success ?? false;
-  }
+  } 
 
   Future<bool> _performRefresh() async {
-  try {
-    final freshDio = Dio(
-      BaseOptions(
-        baseUrl: _dio.options.baseUrl,
-        headers: Map<String, dynamic>.from(_dio.options.headers),
-        connectTimeout: _dio.options.connectTimeout,
-        receiveTimeout: _dio.options.receiveTimeout,
-      ),
-    );
+    try {
+      final refreshToken = await _storage.read(key: 'refresh_token');
+      if (refreshToken == null) return false;
 
-    freshDio.interceptors.add(CookieManager(_cookieJar!));
+      final freshDio = Dio(
+        BaseOptions(
+          baseUrl: _dio.options.baseUrl,
+          headers: Map<String, dynamic>.from(_dio.options.headers),
+          connectTimeout: _dio.options.connectTimeout,
+          receiveTimeout: _dio.options.receiveTimeout,
+        ),
+      );
 
-    final response =
-        await freshDio.post("/api/v1/auth/token/refresh/");
+      freshDio.interceptors.add(CookieManager(_cookieJar!));
 
-    if (response.statusCode == 200) {
-      _accessToken = response.data['access'] as String;
-      await _storage.write(key: 'access_token', value: _accessToken);
+      final response = await freshDio.post(
+        "/api/v1/auth/token/refresh/",
+        data: {"refresh": refreshToken},
+      );
 
-      notifyListeners();
-      return true;
+      if (response.statusCode == 200) {
+        _accessToken = response.data['tokens']['access'] as String;
+        await _storage.write(key: 'access_token', value: _accessToken);
+
+        notifyListeners();
+        return true;
+      }
+    } catch (e) {
+      debugPrint("Refresh failed: $e");
     }
-  } catch (e) {
-    debugPrint("Refresh failed: $e");
+
+    return false;
   }
-
-  return false;
-}
-
 
   // Login – backend sets HTTP-Only refresh cookie
   Future<bool> login(String username, String password) async {
@@ -243,9 +265,20 @@ class ApiProvider with ChangeNotifier {
       );
 
       if (response.statusCode == 200) {
-        _accessToken = response.data['access'];
+        final data = response.data as Map<String, dynamic>;
+        _accessToken = data['tokens']['access'];
+        final refreshToken = data['tokens']['refresh'];
+
         await _storage.write(key: 'access_token', value: _accessToken);
-        _currentUser = null; // Will be fetched fresh
+        await _storage.write(key: 'refresh_token', value: refreshToken);
+
+        if (data['user'] != null) {
+          _currentUser = User.fromJson(data['user']);
+        }
+
+        // Register Push Token after login
+        await PushNotificationService.instance.registerToken();
+
         notifyListeners();
         return true;
       }
@@ -327,16 +360,25 @@ class ApiProvider with ChangeNotifier {
   }
 
   // Logout – clear everything
-  Future<void> logout() async {
+  Future<void> logout([BuildContext? context]) async {
     try {
+      // Unregister token BEFORE clearing access token
+      await PushNotificationService.instance.unregisterToken();
+
       await _dio.post(
         "/api/v1/auth/logout/",
       ); // Optional: blacklist refresh token
     } catch (_) {}
 
     await _storage.delete(key: 'access_token');
+    await _storage.delete(key: 'refresh_token');
     _accessToken = null;
     _currentUser = null;
+
+    // Clear notification session if context is provided
+    if (context != null) {
+      context.read<NotificationProvider>().disposeSession();
+    }
 
     // Delete all cookies (including HTTP-Only refresh token)
     await _cookieJar?.deleteAll();
@@ -430,6 +472,75 @@ class ApiProvider with ChangeNotifier {
     } finally {
       _isLoadingMore = false;
       // Final safe notify
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) notifyListeners();
+      });
+    }
+  }
+
+  Future<void> fetchKnowledgeHubPosts({bool forceRefresh = false}) async {
+    if (forceRefresh) {
+      _knowledgeHubPosts.clear();
+      _khNextCursor = null;
+      _khHasMore = true;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) notifyListeners();
+      });
+    }
+
+    if (_khIsLoadingMore || !_khHasMore) return;
+
+    _khIsLoadingMore = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) notifyListeners();
+    });
+
+    try {
+      String url = "/api/v1/community/posts/";
+      Map<String, dynamic> queryParameters = {"knowledge_hub": "true"};
+
+      if (!forceRefresh && _khNextCursor != null) {
+        url = _khNextCursor!;
+        // When using cursor, query params are usually already in the URL
+        queryParameters = {};
+      }
+
+      final response = await _dio.get(url, queryParameters: queryParameters);
+
+      if (response.statusCode == 200) {
+        final jsonResponse = response.data as Map<String, dynamic>;
+        final List<dynamic> results = jsonResponse['results'];
+
+        final newPosts = results
+            .map((json) => Post.fromJson(json as Map<String, dynamic>))
+            .where((post) => post.knowledgeHub)
+            .toList();
+
+        _khNextCursor = jsonResponse['next'] as String?;
+        _khHasMore = _khNextCursor != null;
+
+        if (forceRefresh) {
+          _knowledgeHubPosts = newPosts;
+        } else {
+          _knowledgeHubPosts.addAll(newPosts);
+        }
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) notifyListeners();
+        });
+      }
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        final refreshed = await _refreshAccessToken();
+        if (refreshed)
+          return fetchKnowledgeHubPosts(forceRefresh: forceRefresh);
+      }
+      debugPrint("Error fetching KH posts: $e");
+    } catch (e) {
+      debugPrint("Unexpected error KH posts: $e");
+    } finally {
+      _khIsLoadingMore = false;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) notifyListeners();
       });
@@ -665,7 +776,7 @@ class ApiProvider with ChangeNotifier {
         final data = response.data['data'];
         final updatedPost = Post.fromJson(data);
 
-        // Update posts list me
+        // Update posts list
         _posts = _posts.map((p) {
           if (p.id == postId) {
             return updatedPost;
@@ -717,7 +828,8 @@ class ApiProvider with ChangeNotifier {
     String? title,
     required String previewContent,
     required String fullContent,
-    File? image,
+    List<File>? mediaFiles,
+    bool knowledgeHub = false,
     List<String> tags = const [],
   }) async {
     try {
@@ -727,25 +839,27 @@ class ApiProvider with ChangeNotifier {
       final Map<String, dynamic> data = {
         'preview_content': previewContent,
         'full_content': fullContent,
+        'knowledge_hub': knowledgeHub,
         if (title != null && title.trim().isNotEmpty) 'title': title.trim(),
         if (tagIds.isNotEmpty) 'tags': tagIds,
       };
 
-      FormData? formData;
-      if (image != null) {
-        formData = FormData.fromMap({
-          ...data,
-          'image': await MultipartFile.fromFile(image.path),
-        });
+      FormData formData = FormData.fromMap(data);
+
+      if (mediaFiles != null && mediaFiles.isNotEmpty) {
+        for (var file in mediaFiles) {
+          formData.files.add(
+            MapEntry('media_files', await MultipartFile.fromFile(file.path)),
+          );
+        }
       }
 
       final response = await _dio.post(
         '/api/v1/community/posts/',
-        data: formData ?? data,
+        data: formData,
       );
 
-     return true;
-
+      return response.statusCode == 201 || response.statusCode == 200;
     } catch (e) {
       debugPrint("Create post error: $e");
       return false;
@@ -797,45 +911,63 @@ class ApiProvider with ChangeNotifier {
     }
   }
 
-  // UPDATE POST — MULTIPLE TAGS FIXED
+  // UPDATE POST — GRANULAR MEDIA MANAGEMENT (PATCH)
   Future<bool> updatePost({
     required int postId,
     String? title,
     required String previewContent,
     required String fullContent,
-    File? image,
-    bool removeImage = false,
+    List<File>? mediaFiles,
+    bool knowledgeHub = false,
+    List<int>? removeMediaIds,
+    List<Map<String, dynamic>>? reorderMedia,
     List<String> tags = const [],
   }) async {
     try {
       final List<int> tagIds = await _getTagIds(tags);
 
       final Map<String, dynamic> data = {
+        'title': title?.trim() ?? '',
         'preview_content': previewContent,
         'full_content': fullContent,
-        if (title != null && title.trim().isNotEmpty) 'title': title.trim(),
-        if (tagIds.isNotEmpty) 'tags': tagIds,
+        'knowledge_hub': knowledgeHub,
+        'tags': tagIds,
+        if (removeMediaIds != null)
+          'remove_media_ids': jsonEncode(removeMediaIds),
+        if (reorderMedia != null) 'reorder_media': jsonEncode(reorderMedia),
       };
 
-      FormData? formData;
-      if (removeImage) {
-        formData = FormData.fromMap({...data, 'image': ''});
-      } else if (image != null) {
-        formData = FormData.fromMap({
-          ...data,
-          'image': await MultipartFile.fromFile(image.path),
-        });
+      FormData formData = FormData.fromMap(data);
+
+      if (mediaFiles != null && mediaFiles.isNotEmpty) {
+        for (var file in mediaFiles) {
+          formData.files.add(
+            MapEntry('add_media', await MultipartFile.fromFile(file.path)),
+          );
+        }
       }
 
-      final response = await _dio.put(
+      final response = await _dio.patch(
         '/api/v1/community/posts/$postId/',
-        data: formData ?? data,
+        data: formData,
       );
 
-      return true;
+      final success =
+          response.statusCode != null &&
+          response.statusCode! >= 200 &&
+          response.statusCode! < 300;
 
+      if (!success) {
+        debugPrint("Update failed with status: ${response.statusCode}");
+        debugPrint("Response data: ${response.data}");
+      }
+
+      return success;
+    } on DioException catch (e) {
+      debugPrint("Update post DioError: ${e.response?.data ?? e.message}");
+      return false;
     } catch (e) {
-      debugPrint("Update post error: $e");
+      debugPrint("Update post unexpected error: $e");
       return false;
     }
   }
@@ -860,34 +992,31 @@ class ApiProvider with ChangeNotifier {
   /// DELETE POST
   /// DELETE /api/v1/community/posts/<post_id>/
   Future<bool> deletePost(int postId) async {
-  try {
-    final response = await _dio.delete(
-      '/api/v1/community/posts/$postId/',
-    );
+    try {
+      final response = await _dio.delete('/api/v1/community/posts/$postId/');
 
-    if (response.statusCode == 204 || response.statusCode == 200) {
-      debugPrint("Post deleted successfully: ${response.statusCode}");
+      if (response.statusCode == 204 || response.statusCode == 200) {
+        debugPrint("Post deleted successfully: ${response.statusCode}");
 
-      // 🔥 REMOVE FROM LOCAL LIST
-      _posts.removeWhere((post) => post.id == postId);
+        // 🔥 REMOVE FROM LOCAL LIST
+        _posts.removeWhere((post) => post.id == postId);
 
-      // 🔥 UPDATE UI
-      notifyListeners();
+        // 🔥 UPDATE UI
+        notifyListeners();
 
-      return true;
-    } else {
-      debugPrint("Delete failed: ${response.statusCode} ${response.data}");
+        return true;
+      } else {
+        debugPrint("Delete failed: ${response.statusCode} ${response.data}");
+        return false;
+      }
+    } on DioException catch (e) {
+      debugPrint("Delete post error: ${e.response?.data ?? e.message}");
+      return false;
+    } catch (e) {
+      debugPrint("Unexpected delete error: $e");
       return false;
     }
-  } on DioException catch (e) {
-    debugPrint("Delete post error: ${e.response?.data ?? e.message}");
-    return false;
-  } catch (e) {
-    debugPrint("Unexpected delete error: $e");
-    return false;
   }
-}
-
 
   Future<Map<String, dynamic>?> fetchEntrepreneurProfile() async {
     try {

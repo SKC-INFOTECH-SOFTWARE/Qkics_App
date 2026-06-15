@@ -73,7 +73,7 @@ class _RoomTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currentUser = context.read<ApiProvider>().currentUser;
-    final otherUser = room.user.id == currentUser?.id ? room.expert : room.user;
+    final otherUser = room.user.id == currentUser?.id ? room.advisor : room.user;
 
     return ListTile(
       onTap: () {

@@ -2,14 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../providers/document_provider.dart';
 import '../models/document_model.dart';
 import '../models/download_history_model.dart';
 import 'document_detail_sheet.dart';
 import 'pdf_viewer_page.dart';
+import 'my_documents_page.dart';
 
 class KnowledgeHubPage extends StatefulWidget {
-  const KnowledgeHubPage({super.key});
+  final bool embedded;
+  final TabController? tabController;
+
+  const KnowledgeHubPage({
+    super.key,
+    this.embedded = false,
+    this.tabController,
+  });
 
   @override
   State<KnowledgeHubPage> createState() => _KnowledgeHubPageState();
@@ -18,117 +27,230 @@ class KnowledgeHubPage extends StatefulWidget {
 class _KnowledgeHubPageState extends State<KnowledgeHubPage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
+  String? _selectedAccess;
 
- @override
-void initState() {
-  super.initState();
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    final provider = context.read<DocumentProvider>();
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<DocumentProvider>();
+      provider.fetchDocuments(isActive: true);
+      provider.fetchDownloadHistory();
+    });
+  }
 
-    provider.fetchDocuments();        // 🔥 ADD THIS
-    provider.fetchDownloadHistory();  // existing
-  });
-}
+  void _updateFilter(String? type) {
+    setState(() => _selectedAccess = type);
+    context.read<DocumentProvider>().fetchDocuments(
+      isActive: true,
+      accessType: type,
+      search: _searchQuery.isEmpty ? null : _searchQuery,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final provider = context.watch<DocumentProvider>();
+    final docs = provider.documents;
 
-    final filteredDocs = provider.documents.where((doc) {
-      return doc.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          doc.description.toLowerCase().contains(_searchQuery.toLowerCase());
-    }).toList();
+    final exploreTab = Column(
+      children: [
+        _buildSearchBar(theme),
+        Expanded(
+          child: provider.isLoading
+              ? _buildShimmer(theme)
+              : docs.isEmpty
+              ? _buildEmptyState(theme, "No documents available")
+              : ListView.separated(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  itemCount: docs.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final doc = docs[index];
+                    return _DocumentCard(document: doc);
+                  },
+                ),
+        ),
+      ],
+    );
+
+    final historyTab = provider.isLoadingHistory
+        ? _buildShimmer(theme)
+        : provider.downloadHistory.isEmpty
+        ? _buildEmptyState(theme, "You haven't downloaded any documents yet")
+        : ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: provider.downloadHistory.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final history = provider.downloadHistory[index];
+              return _HistoryCard(history: history);
+            },
+          );
+
+    if (widget.embedded) {
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        body: TabBarView(
+          controller: widget.tabController,
+          children: [exploreTab, historyTab],
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const MyDocumentsPage()),
+          ),
+          elevation: 4,
+          backgroundColor: theme.colorScheme.primary,
+          label: Text(
+            "My Uploads",
+            style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+          ),
+          icon: const Icon(Icons.upload_file),
+        ),
+      );
+    }
 
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor: theme.scaffoldBackgroundColor,
         appBar: AppBar(
-          title: const Text(
-            "Knowledge Hub",
-            style: TextStyle(fontWeight: FontWeight.bold),
+          title: Text(
+            "Document Hub",
+            style: GoogleFonts.inter(fontWeight: FontWeight.bold),
           ),
           centerTitle: true,
           bottom: TabBar(
-            dividerColor: Colors.transparent,
-            indicatorColor: theme.colorScheme.primary,
-            labelColor: theme.colorScheme.primary,
-            unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
+            indicatorWeight: 3,
+            labelStyle: GoogleFonts.inter(fontWeight: FontWeight.bold),
+            unselectedLabelStyle: GoogleFonts.inter(
+              fontWeight: FontWeight.normal,
+            ),
             tabs: const [
               Tab(text: "Explore"),
               Tab(text: "My Downloads"),
             ],
           ),
         ),
-        body: TabBarView(
-          children: [
-            // ================= EXPLORE TAB =================
-            Column(
-              children: [
-                _buildSearchBar(theme),
-                Expanded(
-                  child: provider.isLoading
-                      ? _buildShimmer(theme)
-                      : filteredDocs.isEmpty
-                      ? _buildEmptyState(theme, "No documents available")
-                      : ListView.separated(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          itemCount: filteredDocs.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 12),
-                          itemBuilder: (context, index) {
-                            final doc = filteredDocs[index];
-                            return _DocumentCard(document: doc);
-                          },
-                        ),
-                ),
-              ],
-            ),
-
-            // ================= MY DOWNLOADS TAB =================
-            provider.isLoadingHistory
-                ? _buildShimmer(theme)
-                : provider.downloadHistory.isEmpty
-                ? _buildEmptyState(
-                    theme,
-                    "You haven't downloaded any documents yet",
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: provider.downloadHistory.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final history = provider.downloadHistory[index];
-                      return _HistoryCard(history: history);
-                    },
-                  ),
-          ],
+        body: TabBarView(children: [exploreTab, historyTab]),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const MyDocumentsPage()),
+          ),
+          elevation: 4,
+          backgroundColor: theme.colorScheme.primary,
+          label: Text(
+            "My Uploads",
+            style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+          ),
+          icon: const Icon(Icons.upload_file),
         ),
       ),
     );
   }
 
   Widget _buildSearchBar(ThemeData theme) {
-    return Padding(
+    return Container(
       padding: const EdgeInsets.all(16.0),
-      child: TextField(
-        controller: _searchController,
-        onChanged: (val) => setState(() => _searchQuery = val),
-        decoration: InputDecoration(
-          hintText: "Search documents...",
-          prefixIcon: const Icon(Icons.search),
-          filled: true,
-          fillColor: theme.colorScheme.surface,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
+      child: Column(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: TextField(
+              controller: _searchController,
+              onSubmitted: (val) {
+                setState(() => _searchQuery = val);
+                context.read<DocumentProvider>().fetchDocuments(
+                  search: val,
+                  isActive: true,
+                  accessType: _selectedAccess,
+                );
+              },
+              decoration: InputDecoration(
+                hintText: "Search knowledge base...",
+                hintStyle: GoogleFonts.inter(
+                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                ),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: theme.colorScheme.primary,
+                ),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 20),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = "");
+                          context.read<DocumentProvider>().fetchDocuments(
+                            isActive: true,
+                            accessType: _selectedAccess,
+                          );
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: theme.colorScheme.surface,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+              ),
+            ),
           ),
-          contentPadding: const EdgeInsets.symmetric(vertical: 0),
-        ),
+          const SizedBox(height: 16),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            child: Row(
+              children: [
+                _PremiumChip(
+                  label: "All Documents",
+                  isSelected: _selectedAccess == null,
+                  onSelected: () => _updateFilter(null),
+                  icon: Icons.category_outlined,
+                ),
+                const SizedBox(width: 8),
+                _PremiumChip(
+                  label: "Free",
+                  isSelected: _selectedAccess == "FREE",
+                  onSelected: () => _updateFilter("FREE"),
+                  icon: Icons.lock_open,
+                ),
+                const SizedBox(width: 8),
+                _PremiumChip(
+                  label: "Premium",
+                  isSelected: _selectedAccess == "PREMIUM",
+                  onSelected: () => _updateFilter("PREMIUM"),
+                  icon: Icons.star_outline,
+                ),
+                const SizedBox(width: 8),
+                _PremiumChip(
+                  label: "Paid",
+                  isSelected: _selectedAccess == "PAID",
+                  onSelected: () => _updateFilter("PAID"),
+                  icon: Icons.payments_outlined,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -141,11 +263,11 @@ void initState() {
         padding: const EdgeInsets.all(16),
         itemCount: 6,
         itemBuilder: (_, __) => Container(
-          height: 100,
+          height: 110,
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
           ),
         ),
       ),
@@ -157,18 +279,30 @@ void initState() {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.description_outlined,
-            size: 64,
-            color: theme.colorScheme.primary.withOpacity(0.2),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withOpacity(0.05),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.description_outlined,
+              size: 64,
+              color: theme.colorScheme.primary.withOpacity(0.3),
+            ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            _searchQuery.isEmpty
-                ? message
-                : "No documents found for '$_searchQuery'",
-            style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-            textAlign: TextAlign.center,
+          const SizedBox(height: 20),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Text(
+              _searchQuery.isEmpty ? message : "No results for '$_searchQuery'",
+              style: GoogleFonts.inter(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ),
         ],
       ),
@@ -185,6 +319,7 @@ class _DocumentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isPremium = document.accessType == "PREMIUM";
+    final isPaid = document.accessType == "PAID";
 
     return InkWell(
       onTap: () {
@@ -192,47 +327,57 @@ class _DocumentCard extends StatelessWidget {
           context: context,
           isScrollControlled: true,
           backgroundColor: Colors.transparent,
+          barrierColor: Colors.black54,
           builder: (_) => DocumentDetailSheet(document: document),
         );
       },
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(20),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isPremium
-                ? theme.colorScheme.primary.withOpacity(0.2)
+            color: (isPremium || isPaid)
+                ? theme.colorScheme.primary.withOpacity(0.1)
                 : Colors.transparent,
-            width: 1,
           ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              blurRadius: 15,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
         child: Row(
           children: [
-            // Icon / Avatar
             Container(
-              width: 56,
-              height: 56,
+              width: 60,
+              height: 60,
               decoration: BoxDecoration(
-                color: (isPremium ? theme.colorScheme.primary : Colors.blue)
-                    .withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(
+                  colors: isPremium
+                      ? [
+                          theme.colorScheme.primary.withOpacity(0.2),
+                          theme.colorScheme.primary.withOpacity(0.05),
+                        ]
+                      : [
+                          Colors.blue.withOpacity(0.1),
+                          Colors.blue.withOpacity(0.02),
+                        ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(
-                isPremium ? Icons.auto_stories : Icons.article,
+                isPremium ? Icons.auto_stories : Icons.article_rounded,
                 color: isPremium ? theme.colorScheme.primary : Colors.blue,
+                size: 28,
               ),
             ),
             const SizedBox(width: 16),
-            // Details
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -242,41 +387,31 @@ class _DocumentCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           document.title,
-                          style: const TextStyle(
+                          style: GoogleFonts.inter(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
+                            color: theme.colorScheme.onSurface,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      if (isPremium)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            "PREMIUM",
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
+                      if (isPremium || isPaid)
+                        _CompactBadge(
+                          label: document.accessType,
+                          color: isPremium
+                              ? theme.colorScheme.primary
+                              : Colors.purple,
                         ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Text(
                     document.description,
-                    style: TextStyle(
+                    style: GoogleFonts.inter(
                       fontSize: 13,
                       color: theme.colorScheme.onSurfaceVariant,
+                      height: 1.3,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -287,9 +422,37 @@ class _DocumentCard extends StatelessWidget {
             const SizedBox(width: 8),
             Icon(
               Icons.chevron_right,
-              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.3),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CompactBadge extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _CompactBadge({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.2), width: 0.5),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.inter(
+          fontSize: 9,
+          fontWeight: FontWeight.w800,
+          color: color,
+          letterSpacing: 0.5,
         ),
       ),
     );
@@ -338,8 +501,8 @@ class _HistoryCard extends StatelessWidget {
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.02),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
@@ -348,11 +511,11 @@ class _HistoryCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.05),
+                color: theme.colorScheme.primary.withOpacity(0.08),
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                Icons.file_download_done,
+                Icons.file_download_done_rounded,
                 color: theme.colorScheme.primary,
                 size: 20,
               ),
@@ -364,7 +527,7 @@ class _HistoryCard extends StatelessWidget {
                 children: [
                   Text(
                     history.documentTitle,
-                    style: const TextStyle(
+                    style: GoogleFonts.inter(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
                     ),
@@ -374,7 +537,7 @@ class _HistoryCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     "Downloaded on $date",
-                    style: TextStyle(
+                    style: GoogleFonts.inter(
                       fontSize: 12,
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -383,6 +546,121 @@ class _HistoryCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PremiumChip extends StatefulWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onSelected;
+  final IconData icon;
+
+  const _PremiumChip({
+    required this.label,
+    required this.isSelected,
+    required this.onSelected,
+    required this.icon,
+  });
+
+  @override
+  State<_PremiumChip> createState() => _PremiumChipState();
+}
+
+class _PremiumChipState extends State<_PremiumChip>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) => _controller.reverse(),
+      onTapCancel: () => _controller.reverse(),
+      onTap: widget.onSelected,
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            gradient: widget.isSelected
+                ? LinearGradient(
+                    colors: [
+                      theme.colorScheme.primary,
+                      theme.colorScheme.primary.withOpacity(0.8),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
+            color: widget.isSelected ? null : theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: widget.isSelected
+                  ? Colors.transparent
+                  : theme.colorScheme.outlineVariant.withOpacity(0.5),
+              width: 1,
+            ),
+            boxShadow: widget.isSelected
+                ? [
+                    BoxShadow(
+                      color: theme.colorScheme.primary.withOpacity(0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : [],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                widget.icon,
+                size: 18,
+                color: widget.isSelected
+                    ? Colors.white
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                widget.label,
+                style: GoogleFonts.inter(
+                  color: widget.isSelected
+                      ? Colors.white
+                      : theme.colorScheme.onSurface,
+                  fontWeight: widget.isSelected
+                      ? FontWeight.bold
+                      : FontWeight.w500,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -3,13 +3,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:q_kics/home/post_detail_page.dart';
 import 'package:q_kics/models/post.dart';
-import 'package:q_kics/models/tag.dart';
 import 'package:q_kics/providers/api_provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:q_kics/home/comment_sheet.dart';
 import 'package:q_kics/home/create_post_page.dart';
+import 'package:q_kics/widgets/video_player_widget.dart';
 
-class PostCard extends StatelessWidget {
+class PostCard extends StatefulWidget {
   final Post post;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
@@ -24,7 +24,56 @@ class PostCard extends StatelessWidget {
   });
 
   @override
+  State<PostCard> createState() => _PostCardState();
+}
+
+class _PostCardState extends State<PostCard> with TickerProviderStateMixin {
+  int _currentPage = 0;
+  bool _showHeart = false;
+  late AnimationController _heartController;
+
+  @override
+  void initState() {
+    super.initState();
+    _heartController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+  }
+
+  @override
+  void dispose() {
+    _heartController.dispose();
+    super.dispose();
+  }
+
+  void _handleDoubleTap() {
+    if (!widget.post.isLiked) {
+      _toggleLike();
+    }
+    setState(() => _showHeart = true);
+    _heartController.forward(from: 0.0).then((_) {
+      Future.delayed(const Duration(milliseconds: 600), () {
+        if (mounted) setState(() => _showHeart = false);
+      });
+    });
+  }
+
+  void _toggleLike() async {
+    final api = context.read<ApiProvider>();
+    setState(() {
+      widget.post.isLiked = !widget.post.isLiked;
+      widget.post.totalLikes = widget.post.isLiked
+          ? widget.post.totalLikes + 1
+          : widget.post.totalLikes - 1;
+    });
+    await api.togglePostLike(widget.post.id);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final post = widget.post;
+    final currentUserId = widget.currentUserId;
     final theme = Theme.of(context);
     final hasTitle = post.title?.trim().isNotEmpty ?? false;
 
@@ -140,54 +189,36 @@ class PostCard extends StatelessWidget {
               ),
             ),
 
-          // ================= IMAGE =================
-          if (post.image != null && post.image!.trim().isNotEmpty) ...[
-            const SizedBox(height: 12),
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => PostDetailPage(
-                      post: post,
-                      currentUserId: currentUserId,
-                    ),
-                  ),
-                );
-              },
-              child: Hero(
-                tag: 'post_image_${post.id}_${post.image.hashCode}',
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: CachedNetworkImage(
-                    imageUrl: post.image!,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) => Shimmer.fromColors(
-                      baseColor: Colors.grey[300]!,
-                      highlightColor: Colors.grey[100]!,
-                      child: Container(height: 280),
-                    ),
-                    errorWidget: (_, __, ___) => Container(
-                      height: 280,
-                      color: Colors.grey[200],
-                      child: const Icon(Icons.broken_image_outlined),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
+          // ================= MEDIA (IMGS/VIDEOS) =================
+          if (post.media.isNotEmpty) _buildMediaCarousel(context),
 
           // ================= FOOTER =================
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
             child: Row(
               children: [
-                _iconText(
-                  context,
-                  Icons.favorite_border,
-                  post.totalLikes.toString(),
+                GestureDetector(
+                  onTap: _toggleLike,
+                  child: Row(
+                    children: [
+                      Icon(
+                        widget.post.isLiked
+                            ? Icons.thumb_up
+                            : Icons.thumb_up_outlined,
+                        color: widget.post.isLiked
+                            ? Colors.red
+                            : theme.iconTheme.color,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        widget.post.totalLikes > 0
+                            ? '${widget.post.totalLikes}'
+                            : 'Like',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(width: 16),
                 GestureDetector(
@@ -208,7 +239,7 @@ class PostCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        "${post.totalComments} Answer${post.totalComments == 1 ? '' : 's'}",
+                        "${post.totalComments} Comment${post.totalComments == 1 ? '' : 's'}",
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ],
@@ -232,10 +263,12 @@ class PostCard extends StatelessWidget {
         if (value == 'edit') {
           final updated = await Navigator.push<bool>(
             context,
-            MaterialPageRoute(builder: (_) => CreatePostPage(postToEdit: post)),
+            MaterialPageRoute(
+              builder: (_) => CreatePostPage(postToEdit: widget.post),
+            ),
           );
           if (updated == true && context.mounted) {
-            onEdit?.call();
+            widget.onEdit?.call();
           }
         }
 
@@ -266,11 +299,12 @@ class PostCard extends StatelessWidget {
           if (confirm == true && context.mounted) {
             final api = context.read<ApiProvider>();
 
-            final success = await api.deletePost(post.id);
+            final success = await api.deletePost(widget.post.id);
 
             if (success && context.mounted) {
               // Remove post locally
               api.fetchPosts(forceRefresh: true);
+              widget.onDelete?.call(); // Call onDelete callback
 
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -314,14 +348,131 @@ class PostCard extends StatelessWidget {
     );
   }
 
-  // ================= ICON + TEXT =================
-  Widget _iconText(BuildContext context, IconData icon, String text) {
+  // ================= MEDIA CAROUSEL =================
+  Widget _buildMediaCarousel(BuildContext context) {
+    if (widget.post.media.isEmpty) return const SizedBox.shrink();
     final theme = Theme.of(context);
-    return Row(
+
+    return Column(
       children: [
-        Icon(icon, size: 18, color: theme.iconTheme.color),
-        const SizedBox(width: 4),
-        Text(text, style: theme.textTheme.bodySmall),
+        const SizedBox(height: 12),
+        AspectRatio(
+          aspectRatio: 1 / 1, // Instagram-style square or 4:5
+          child: Stack(
+            children: [
+              PageView.builder(
+                itemCount: widget.post.media.length,
+                onPageChanged: (idx) => setState(() => _currentPage = idx),
+                itemBuilder: (context, index) {
+                  final media = widget.post.media[index];
+                  final isVideo = media.isVideo;
+
+                  return GestureDetector(
+                    onDoubleTap: _handleDoubleTap,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => PostDetailPage(
+                            post: widget.post,
+                            currentUserId: widget.currentUserId,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: isVideo
+                            ? VideoPlayerWidget(videoUrl: media.file)
+                            : CachedNetworkImage(
+                                imageUrl: media.file,
+                                fit: BoxFit.cover,
+                                placeholder: (_, __) => Shimmer.fromColors(
+                                  baseColor: Colors.grey[300]!,
+                                  highlightColor: Colors.grey[100]!,
+                                  child: Container(color: Colors.white),
+                                ),
+                                errorWidget: (_, __, ___) => Container(
+                                  color: Colors.grey[200],
+                                  child: const Icon(
+                                    Icons.broken_image_outlined,
+                                  ),
+                                ),
+                              ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              // Double Tap Heart Overlay
+              if (_showHeart)
+                Center(
+                  child: ScaleTransition(
+                    scale: Tween<double>(begin: 0.0, end: 1.5).animate(
+                      CurvedAnimation(
+                        parent: _heartController,
+                        curve: Curves.elasticOut,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.favorite,
+                      color: Colors.white,
+                      size: 90,
+                    ),
+                  ),
+                ),
+              // Current Page Text Indicator (Top Right)
+              if (widget.post.media.length > 1)
+                Positioned(
+                  top: 12,
+                  right: 16,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${_currentPage + 1}/${widget.post.media.length}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        // Dot Indicators (Bottom)
+        if (widget.post.media.length > 1)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(widget.post.media.length, (index) {
+                final isSelected = _currentPage == index;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  margin: const EdgeInsets.symmetric(horizontal: 2.5),
+                  height: 6,
+                  width: isSelected ? 12 : 6,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.primary.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                );
+              }),
+            ),
+          ),
       ],
     );
   }

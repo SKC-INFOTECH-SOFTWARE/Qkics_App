@@ -37,26 +37,36 @@ class DocumentProvider extends ChangeNotifier {
     if (mounted) super.notifyListeners();
   }
 
-  Future<void> fetchDocuments() async {
+  Future<void> fetchDocuments({
+    String? search,
+    String? accessType,
+    bool? isActive,
+    String? ordering,
+  }) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final data = await api.fetchDocuments();
-      _documents = data.map((json) => Document.fromJson(json)).toList();
+      final data = await api.fetchDocuments(
+        search: search,
+        accessType: accessType,
+        isActive: isActive,
+        ordering: ordering,
+      );
+      final List results = data['results'] ?? [];
+      _documents = results.map((json) => Document.fromJson(json)).toList();
     } catch (e) {
       _error = e.toString();
-      debugPrint(
-        "Docs fetch failed (already handled globally if it was a Dio error): $e",
-      );
+      debugPrint("Docs fetch failed: $e");
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<Document?> fetchDocumentDetail(String uuid) async {
+  Future<Document?> fetchDocumentDetail(String? uuid) async {
+    if (uuid == null) return null;
     try {
       final data = await api.fetchDocumentDetail(uuid);
       final detailedDoc = Document.fromJson(data);
@@ -74,23 +84,30 @@ class DocumentProvider extends ChangeNotifier {
     }
   }
 
- Future<void> fetchDownloadHistory() async {
-  _isLoadingHistory = true;
-  notifyListeners();
-
-  try {
-    _downloadHistory = await api.fetchDownloadHistory();
-  } catch (e) {
-    debugPrint("History fetch failed: $e");
-  } finally {
-    _isLoadingHistory = false;
+  Future<void> fetchDownloadHistory() async {
+    _isLoadingHistory = true;
     notifyListeners();
+
+    try {
+      final data = await api.fetchDownloadHistory();
+      final List results = data['results'] ?? [];
+      _downloadHistory = results
+          .map((e) => DownloadHistory.fromJson(e))
+          .toList();
+    } catch (e) {
+      debugPrint("History fetch failed: $e");
+    } finally {
+      _isLoadingHistory = false;
+      notifyListeners();
+    }
   }
-}
 
   Future<String?> downloadDocument(Document doc) async {
+    if (doc.uuid == null) {
+      throw "Document ID is missing";
+    }
     try {
-      final response = await api.downloadDocument(doc.uuid);
+      final response = await api.downloadDocument(doc.uuid!);
 
       // Save to temporary directory or downloads
       final dir = await getApplicationDocumentsDirectory();
@@ -115,6 +132,95 @@ class DocumentProvider extends ChangeNotifier {
       rethrow;
     } catch (e) {
       debugPrint("Download failed: $e");
+      rethrow;
+    }
+  }
+
+  List<Document> _myDocuments = [];
+  bool _isLoadingMyDocs = false;
+
+  List<Document> get myDocuments => _myDocuments;
+  bool get isLoadingMyDocs => _isLoadingMyDocs;
+
+  Future<void> fetchMyDocuments({
+    String? search,
+    String? accessType,
+    bool? isActive,
+    String? ordering,
+  }) async {
+    _isLoadingMyDocs = true;
+    notifyListeners();
+
+    try {
+      final data = await api.fetchMyDocuments(
+        search: search,
+        accessType: accessType,
+        isActive: isActive,
+        ordering: ordering,
+      );
+      final List results = data['results'] ?? [];
+      _myDocuments = results.map((json) => Document.fromJson(json)).toList();
+    } catch (e) {
+      _error = e.toString();
+      debugPrint("My docs fetch failed: $e");
+    } finally {
+      _isLoadingMyDocs = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> uploadDocument({
+    required String title,
+    required String description,
+    required String filePath,
+    required String accessType,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await api.uploadDocument(
+        title: title,
+        description: description,
+        filePath: filePath,
+        accessType: accessType,
+      );
+      // Refresh my documents after successful upload
+      await fetchMyDocuments();
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 400) {
+        final List? errors = e.response?.data;
+        if (errors != null && errors.isNotEmpty) {
+          throw errors.first.toString();
+        }
+      }
+      rethrow;
+    } catch (e) {
+      _error = e.toString();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> updateDocument(
+    String uuid, {
+    String? accessType,
+    bool? isActive,
+  }) async {
+    try {
+      await api.updateMyDocument(
+        uuid,
+        accessType: accessType,
+        isActive: isActive,
+      );
+      // Refresh both lists to be safe
+      await fetchDocuments();
+      await fetchMyDocuments();
+    } catch (e) {
+      debugPrint("Update doc failed: $e");
       rethrow;
     }
   }

@@ -3,6 +3,8 @@ import 'package:q_kics/booking/booking_api_service.dart';
 import 'package:q_kics/booking/models/booking.dart';
 import 'package:q_kics/booking/models/expert_model.dart';
 import 'package:q_kics/booking/models/expert_slot.dart';
+import 'package:q_kics/booking/models/investor_slot.dart';
+import 'package:q_kics/booking/models/investor_booking.dart';
 
 class BookingProvider extends ChangeNotifier {
   final BookingApiService _api = BookingApiService();
@@ -19,10 +21,21 @@ class BookingProvider extends ChangeNotifier {
   List<Booking> expertBookings = [];
   bool isLoadingBookings = false;
   String? bookingsError;
+
+  // Investor specific state
+  String? _investorUuid;
+  List<InvestorSlot> investorSlots = [];
+  List<InvestorBooking> userInvestorBookings = [];
+  List<InvestorBooking> investorAsInvestorBookings = [];
   // ================= SET UUID =================
   void setExpertUuid(String uuid) {
     _expertUuid = uuid;
     debugPrint("✅ expertUuid set: $_expertUuid");
+  }
+
+  void setInvestorUuid(String uuid) {
+    _investorUuid = uuid;
+    debugPrint("✅ investorUuid set: $_investorUuid");
   }
 
   // ================= FETCH SLOTS =================
@@ -58,6 +71,7 @@ class BookingProvider extends ChangeNotifier {
       experts = await _api.getExperts();
     } catch (e) {
       error = "Failed to load experts";
+      print('❌ fetchExperts error: $e');
     } finally {
       isLoading = false;
       notifyListeners();
@@ -69,26 +83,26 @@ class BookingProvider extends ChangeNotifier {
     required DateTime start,
     required DateTime end,
     required int duration,
-    required double price,
+    required double chatPrice,
+    required double videoCallPrice,
+    required bool isChatAvailable,
+    required bool isVideoCallAvailable,
     required bool requiresApproval,
   }) async {
-    if (_expertUuid == null) {
-      throw Exception("expertUuid not set");
-    }
-
+    if (_expertUuid == null) throw Exception('expertUuid not set');
     try {
       isLoading = true;
       notifyListeners();
-
       await _api.createSlot(
         start: start,
         end: end,
         duration: duration,
-        price: price,
+        chatPrice: chatPrice,
+        videoCallPrice: videoCallPrice,
+        isChatAvailable: isChatAvailable,
+        isVideoCallAvailable: isVideoCallAvailable,
         requiresApproval: requiresApproval,
       );
-
-      // 🔁 refresh after create
       await fetchSlots();
     } finally {
       isLoading = false;
@@ -101,21 +115,25 @@ class BookingProvider extends ChangeNotifier {
     required String slotUuid,
     required DateTime start,
     required DateTime end,
-    required double price,
+    required double chatPrice,
+    required double videoCallPrice,
+    required bool isChatAvailable,
+    required bool isVideoCallAvailable,
     required bool requiresApproval,
   }) async {
     try {
       isLoading = true;
       notifyListeners();
-
       await _api.updateSlot(
         slotUuid: slotUuid,
         start: start,
         end: end,
-        price: price,
+        chatPrice: chatPrice,
+        videoCallPrice: videoCallPrice,
+        isChatAvailable: isChatAvailable,
+        isVideoCallAvailable: isVideoCallAvailable,
         requiresApproval: requiresApproval,
       );
-
       await fetchSlots();
     } finally {
       isLoading = false;
@@ -165,6 +183,85 @@ class BookingProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint("❌ fetchExpertBookings error: $e");
       bookingsError = "Failed to load expert bookings";
+    } finally {
+      isLoadingBookings = false;
+      notifyListeners();
+    }
+  }
+
+  // ================= INVESTOR METHODS =================
+
+  Future<void> fetchInvestorSlots() async {
+    if (_investorUuid == null) return;
+
+    try {
+      isLoading = true;
+      notifyListeners();
+      investorSlots = await _api.getInvestorSlots(_investorUuid!);
+    } catch (e) {
+      debugPrint("❌ fetchInvestorSlots error: $e");
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> createInvestorSlot({
+    required DateTime start,
+    required DateTime end,
+    required int duration,
+  }) async {
+    try {
+      isLoading = true;
+      notifyListeners();
+      await _api.createInvestorSlot(start: start, end: end, duration: duration);
+      await fetchInvestorSlots();
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> createInvestorBooking(String slotUuid) async {
+    try {
+      isLoading = true;
+      notifyListeners();
+      await _api.createInvestorBooking(slotUuid);
+    } catch (e) {
+      debugPrint("❌ createInvestorBooking error: $e");
+      rethrow;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchUserInvestorBookings() async {
+    try {
+      isLoadingBookings = true;
+      bookingsError = null;
+      notifyListeners();
+      userInvestorBookings = await _api.getInvestorBookings();
+    } catch (e) {
+      debugPrint("❌ fetchUserInvestorBookings error: $e");
+      bookingsError = "Failed to load investor bookings";
+    } finally {
+      isLoadingBookings = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchInvestorAsInvestorBookings() async {
+    try {
+      isLoadingBookings = true;
+      bookingsError = null;
+      notifyListeners();
+      investorAsInvestorBookings = await _api.getInvestorBookings(
+        asInvestor: true,
+      );
+    } catch (e) {
+      debugPrint("❌ fetchInvestorAsInvestorBookings error: $e");
+      bookingsError = "Failed to load investor bookings";
     } finally {
       isLoadingBookings = false;
       notifyListeners();

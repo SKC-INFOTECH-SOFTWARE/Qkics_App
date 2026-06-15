@@ -20,9 +20,13 @@
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="A new Flutter project.">
 
+  <!-- Viewport: required so mobile browsers don't zoom out to a desktop layout -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="q_kics">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
@@ -31,8 +35,101 @@
 
   <title>q_kics</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    /* Ensure the Flutter canvas fills the full browser viewport with no gaps */
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: #000000;
+    }
+
+    /*
+     * Flutter 3.x mounts the app inside a <flutter-view> custom element.
+     * Use the TAG NAME selector (no # prefix) — this is NOT an id.
+     * vw/vh units guarantee we fill the actual viewport even if a parent
+     * has a quirky computed size.
+     */
+    flutter-view {
+      display: block;
+      width: 100vw !important;
+      height: 100vh !important;
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+    }
+
+    /* Flutter's internal shadow elements */
+    flt-glass-pane,
+    flt-scene-host,
+    flt-scene {
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    /* Legacy Flutter web used #flutter-view (id) — keep for older builds */
+    #flutter-view {
+      width: 100% !important;
+      height: 100% !important;
+    }
+  </style>
 </head>
 <body>
+  <script>
+    // ─────────────────────────────────────────────────────────────────────────
+    // Force Flutter to render at full viewport size on every platform.
+    //
+    // Problem: Flutter's web engine reads window.innerWidth/innerHeight once at
+    // startup to create its canvas. On some desktop browsers it can initialise
+    // with phone-sized dimensions (390 × 844) instead of the actual window size,
+    // causing every screen to appear as a tiny portrait rectangle.
+    //
+    // Fix (two parts):
+    //  1. After Flutter fires "flutter-first-frame" we forcibly set flutter-view
+    //     to window.innerWidth × window.innerHeight using inline !important,
+    //     which beats any inline style Flutter may have set previously.
+    //  2. We then dispatch a synthetic "resize" event so Flutter's engine
+    //     re-reads the (now correct) window dimensions and re-renders the
+    //     full-size layout.
+    // ─────────────────────────────────────────────────────────────────────────
+    (function () {
+      function enforceFullViewport() {
+        var fv = document.querySelector('flutter-view');
+        if (!fv) return;
+        fv.style.setProperty('position', 'fixed', 'important');
+        fv.style.setProperty('top',      '0',                     'important');
+        fv.style.setProperty('left',     '0',                     'important');
+        fv.style.setProperty('width',    window.innerWidth  + 'px', 'important');
+        fv.style.setProperty('height',   window.innerHeight + 'px', 'important');
+      }
+
+      // Re-apply on every window resize (handles orientation changes too).
+      window.addEventListener('resize', enforceFullViewport);
+
+      // After Flutter renders its first frame the flutter-view element exists.
+      // Enforce full-viewport size then trigger a resize so Flutter's internal
+      // layout recalculates at the corrected dimensions.
+      window.addEventListener('flutter-first-frame', function () {
+        enforceFullViewport();
+        // Tiny delay so Flutter's resize listener picks up the updated size.
+        setTimeout(function () {
+          window.dispatchEvent(new UIEvent('resize'));
+        }, 50);
+      });
+
+      // Also watch for flutter-view being added to the DOM (belt-and-suspenders).
+      var mo = new MutationObserver(function () {
+        if (document.querySelector('flutter-view')) {
+          enforceFullViewport();
+          mo.disconnect();
+        }
+      });
+      mo.observe(document.body, { childList: true, subtree: true });
+    })();
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:q_kics/providers/navigation_provider.dart';
 import 'package:q_kics/providers/api_provider.dart';
+import 'package:q_kics/providers/notification_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:q_kics/home/home_side_menu.dart';
 import 'package:q_kics/home/post_card.dart';
@@ -33,7 +34,7 @@ class _HomePageState extends State<HomePage> {
   bool _isAppBarVisible = true;
   double _previousPixels = 0.0;
   static const double _velocityThreshold =
-      250; // Adjust for sensitivity (higher = needs faster scroll to hide)
+      50; // Adjust for sensitivity (higher = needs faster scroll to hide)
 
   @override
   void initState() {
@@ -89,10 +90,13 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _loadInitialData() async {
     final api = Provider.of<ApiProvider>(context, listen: false);
-    await Future.wait([
-      api.getCurrentUser(),
-      api.fetchPosts(forceRefresh: true),
-    ]);
+    final user = await api.getCurrentUser();
+    await api.fetchPosts(forceRefresh: true);
+
+    if (user != null && mounted) {
+      if (!context.mounted) return;
+      context.read<NotificationProvider>().init(user.id.toString());
+    }
   }
 
   Future<void> _onRefresh() async {

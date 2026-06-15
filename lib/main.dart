@@ -1,11 +1,21 @@
 // main.dart
 import 'package:flutter/material.dart';
+// Only ProviderScope is needed from Riverpod in main.dart.
+// Hide everything else that conflicts with the provider package.
+import 'package:flutter_riverpod/flutter_riverpod.dart'
+    hide Consumer, ChangeNotifierProvider, Provider;
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:q_kics/providers/booking_provider.dart';
 import 'package:q_kics/providers/chat_provider.dart';
+import 'package:q_kics/providers/notification_provider.dart';
+import 'package:q_kics/services/notification_service.dart';
+import 'package:q_kics/services/push_notification_service.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 
 import 'package:q_kics/providers/api_provider.dart';
+import 'package:q_kics/providers/company_provider.dart';
 import 'package:q_kics/providers/navigation_provider.dart';
 import 'package:q_kics/providers/profile_provider.dart';
 import 'package:q_kics/providers/expert_profile_provider.dart';
@@ -32,6 +42,20 @@ final GlobalKey<NavigatorState> globalNavigatorKey =
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  try {
+    await Firebase.initializeApp();
+    if (kDebugMode) print('Firebase initialized successfully');
+  } catch (e) {
+    if (kDebugMode) print('Firebase initialization error: $e');
+  }
+
+  // Initialize Push Notification Service
+  try {
+    await PushNotificationService.instance.initialize();
+  } catch (e) {
+    if (kDebugMode) print('PushNotificationService initialization error: $e');
+  }
+
   // Optimized for social media feed (holds ~100-150 images in memory)
   PaintingBinding.instance.imageCache.maximumSize = 100 * 1024 * 1024; // 100 MB
   PaintingBinding.instance.imageCache.maximumSizeBytes = 100 * 1024 * 1024;
@@ -40,10 +64,18 @@ void main() async {
   await apiProvider.init();
 
   runApp(
-    MultiProvider(
+    // ProviderScope is the Riverpod root — required once at the top level.
+    // The rest of the app continues using the `provider` package unchanged.
+    ProviderScope(
+      child: MultiProvider(
       providers: [
         // ================= CORE API =================
         ChangeNotifierProvider<ApiProvider>.value(value: apiProvider),
+        ChangeNotifierProvider(
+          create: (context) => CompanyProvider(
+            apiProvider: context.read<ApiProvider>(),
+          )..fetchMyCompanies()..fetchCompanyList(), // Pre-fetch basic layout lists
+        ),
 
         // ================= USER PROFILE =================
         ChangeNotifierProvider(
@@ -96,9 +128,15 @@ void main() async {
 
         ChangeNotifierProvider(create: (_) => BookingProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(
+          create: (context) => NotificationProvider(
+            NotificationService(context.read<ApiProvider>().dio),
+          ),
+        ),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ],
       child: const MyApp(),
+    ),
     ),
   );
 }

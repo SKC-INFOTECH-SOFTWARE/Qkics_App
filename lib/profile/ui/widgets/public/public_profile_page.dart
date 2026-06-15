@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:q_kics/booking/expert_slots_page.dart';
+import 'package:q_kics/booking/investor_slots_page.dart';
 import 'package:shimmer/shimmer.dart';
 
 import 'package:q_kics/profile/models/user_profile_model.dart';
@@ -73,20 +74,37 @@ class PublicProfilePage extends StatelessWidget {
                       profile: publicUserProfile,
                       isPublicView: true,
 
-                      // ✅ PUBLIC EXPERT → VIEW SLOTS
-                      onViewSlotsTap: publicUserProfile.userType == 'expert'
+                      // ✅ PUBLIC EXPERT/INVESTOR → VIEW SLOTS
+                      onViewSlotsTap:
+                          (publicUserProfile.userType == 'expert' ||
+                              publicUserProfile.userType == 'investor')
                           ? () {
-                              final expertUserUuid =
+                              final userUuid =
                                   provider.response!.profile.user.uuid;
 
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => ExpertSlotsPage(
-                                    expertUuid: expertUserUuid, // ✅ FIXED
+                              if (publicUserProfile.userType == 'expert') {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        ExpertSlotsPage(expertUuid: userUuid),
                                   ),
-                                ),
-                              );
+                                );
+                              } else if (publicUserProfile.userType ==
+                                  'investor') {
+                                final displayName =
+                                    provider.response!.profile.displayName ??
+                                    'Investor';
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => InvestorSlotsPage(
+                                      investorUuid: userUuid,
+                                      investorName: displayName,
+                                    ),
+                                  ),
+                                );
+                              }
                             }
                           : null,
                     ),

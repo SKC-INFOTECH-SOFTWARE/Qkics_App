@@ -214,7 +214,7 @@ class _LoginPageState extends State<LoginPage>
                                 enableSuggestions: false,
                                 keyboardType: TextInputType.text,
                                 inputFormatters: [
-                                  FilteringTextInputFormatter.allow(RegExp(r'[a-z]')),
+                                  FilteringTextInputFormatter.allow(RegExp(r'[a-z]|[0-9]')),
                                 ],
                                 decoration: _fieldDecoration(
                                   context,

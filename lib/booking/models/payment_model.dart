@@ -35,7 +35,6 @@ class Payment {
     );
   }
 
-  // Helper getters
   bool get isSuccess => status == 'SUCCESS';
   bool get isPending => status == 'PENDING';
   bool get isFailed => status == 'FAILED';

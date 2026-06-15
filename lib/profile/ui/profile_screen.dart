@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:q_kics/booking/create_slot_page.dart';
+import 'package:q_kics/booking/investor_create_slot_page.dart';
 import 'package:q_kics/profile/models/profile_type.dart';
 import 'package:q_kics/profile/ui/upgrade/entrepreneur/entrepreneur_profile_form.dart';
 import 'package:q_kics/profile/ui/upgrade/expert/expert_profile_form.dart';
@@ -179,50 +180,80 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         profile: provider.profile!,
                         isPublicView: false,
 
-                        // ================= EXPERT SLOT CREATION =================
-                        onCreateSlotsTap:
-                            provider.profileType == ProfileType.expert
-                            ? () async {
-                                if (!mounted) return;
-                                final expertProvider = context
-                                    .read<ExpertProfileProvider>();
+                        // ================= EXPERT / INVESTOR SLOT CREATION =================
+                        onCreateSlotsTap: () async {
+                          if (!mounted) return;
 
-                                if (expertProvider.profile == null) {
-                                  await expertProvider.fetchExpertProfile();
-                                }
+                          final investorProvider = context
+                              .read<InvestorProfileProvider>();
+                          final expertProvider = context
+                              .read<ExpertProfileProvider>();
 
-                                if (!mounted) return;
-                                final expertUuid = expertProvider.expertUuid;
+                          // ─── INVESTOR ───
+                          if (investorProvider.exists) {
+                            final investorProfile = investorProvider.profile;
+                            if (investorProfile == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Investor profile not ready"),
+                                ),
+                              );
+                              return;
+                            }
 
-                                if (expertUuid == null || expertUuid.isEmpty) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text("Expert profile not ready"),
-                                    ),
-                                  );
-                                  return;
-                                }
+                            final bookingProvider = context
+                                .read<BookingProvider>();
+                            bookingProvider.setInvestorUuid(
+                              investorProfile.uuid,
+                            );
 
-                                final bookingProvider = context
-                                    .read<BookingProvider>();
+                            if (!mounted) return;
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ChangeNotifierProvider.value(
+                                  value: bookingProvider,
+                                  child: const InvestorCreateSlotPage(),
+                                ),
+                              ),
+                            );
+                            return;
+                          }
 
-                                bookingProvider.setExpertUuid(expertUuid);
+                          // ─── EXPERT ───
+                          if (expertProvider.profile == null) {
+                            await expertProvider.fetchExpertProfile();
+                          }
 
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        ChangeNotifierProvider.value(
-                                          value: bookingProvider,
-                                          child: const CreateSlotPage(),
-                                        ),
-                                  ),
-                                );
-                              }
-                            : null,
+                          if (!mounted) return;
+                          final expertUuid = expertProvider.expertUuid;
+
+                          if (expertUuid == null || expertUuid.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Expert profile not ready"),
+                              ),
+                            );
+                            return;
+                          }
+
+                          final bookingProvider = context
+                              .read<BookingProvider>();
+                          bookingProvider.setExpertUuid(expertUuid);
+
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ChangeNotifierProvider.value(
+                                value: bookingProvider,
+                                child: const CreateSlotPage(),
+                              ),
+                            ),
+                          );
+                        },
 
                         // ================= UPGRADE / EDIT PROFILE =================
-                        onUpgradeTap: () {
+                        onUpgradeTap: () async {
                           final expert = context.read<ExpertProfileProvider>();
                           final entrepreneur = context
                               .read<EntrepreneurProfileProvider>();
@@ -244,7 +275,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           if (effectiveType == ProfileType.expert &&
                               expert.exists &&
                               expert.profile?.applicationStatus == 'draft') {
-                            expert.submitForExpertReview();
+                            await expert.submitForExpertReview();
                             return;
                           }
 
@@ -252,7 +283,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               entrepreneur.exists &&
                               entrepreneur.profile?.applicationStatus ==
                                   'draft') {
-                            entrepreneur.submitForEntrepreneurReview();
+                            await entrepreneur.submitForEntrepreneurReview();
                             return;
                           }
 

@@ -2,6 +2,7 @@ import 'package:q_kics/profile/utils/image_utils.dart';
 
 class InvestorProfile {
   final int id;
+  final String uuid;
   final String username;
   final String? profilePicture;
   final String displayName;
@@ -24,6 +25,7 @@ class InvestorProfile {
 
   InvestorProfile({
     required this.id,
+    required this.uuid,
     required this.username,
     this.profilePicture,
     required this.displayName,
@@ -58,6 +60,7 @@ class InvestorProfile {
 
     return InvestorProfile(
       id: json['id'] ?? 0,
+      uuid: user?['uuid'] ?? '',
       username: user?['username'] ?? '',
       profilePicture: resolveImageUrl(rawImage),
       displayName: json['display_name'] ?? '',

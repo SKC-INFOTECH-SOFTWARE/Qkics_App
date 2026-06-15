@@ -4,6 +4,7 @@ import 'package:q_kics/profile/utils/image_utils.dart';
 
 class User {
   final int id;
+  final String uuid;
   final String username;
   final String email;
   final String phone;
@@ -18,6 +19,7 @@ class User {
 
   const User({
     required this.id,
+    required this.uuid,
     required this.username,
     required this.email,
     required this.phone,
@@ -37,6 +39,7 @@ class User {
       id: json['id'] is int
           ? json['id']
           : int.tryParse(json['id'].toString()) ?? 0,
+      uuid: (json['uuid'] as String?)?.trim() ?? '',
       username: (json['username'] as String?)?.trim() ?? 'unknown_user',
       email: (json['email'] as String?)?.trim() ?? '',
       phone: (json['phone'] as String?)?.trim() ?? '',
@@ -76,6 +79,7 @@ class User {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'uuid': uuid,
       'username': username,
       'email': email,
       'phone': phone,
