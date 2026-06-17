@@ -126,7 +126,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
           Text(
             "Pick a plan that suits your needs",
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: cs.onSurface.withOpacity(0.6),
+              color: cs.onSurface.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 24),
@@ -172,7 +172,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
         color: cs.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 20,
             offset: const Offset(0, -4),
           ),
@@ -194,7 +194,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                 Text(
                   "${plan.durationDays} days access",
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: cs.onSurface.withOpacity(0.6),
+                    color: cs.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ],
@@ -290,7 +290,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: cs.onSurface.withOpacity(0.5)),
+              border: Border.all(color: cs.onSurface.withValues(alpha: 0.5)),
             ),
             child: DataTable(
               columnSpacing: 28,
@@ -389,14 +389,14 @@ class _PlanCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           color: cs.surface,
           border: Border.all(
-            color: isSelected ? cs.primary : cs.onSurface.withOpacity(0.5),
+            color: isSelected ? cs.primary : cs.onSurface.withValues(alpha: 0.5),
             width: isSelected ? 2 : 1,
           ),
           boxShadow: [
             BoxShadow(
               color: isSelected
-                  ? cs.primary.withOpacity(0.1)
-                  : Colors.black.withOpacity(0.05),
+                  ? cs.primary.withValues(alpha: 0.1)
+                  : Colors.black.withValues(alpha: 0.05),
               blurRadius: isSelected ? 16 : 10,
               offset: const Offset(0, 6),
             ),
@@ -423,7 +423,7 @@ class _PlanCard extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.12),
+                      color: Colors.green.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Text(
@@ -450,7 +450,7 @@ class _PlanCard extends StatelessWidget {
             Text(
               "Valid for ${plan.durationDays} days",
               style: theme.textTheme.bodySmall?.copyWith(
-                color: cs.onSurface.withOpacity(0.6),
+                color: cs.onSurface.withValues(alpha: 0.6),
               ),
             ),
 
@@ -478,7 +478,7 @@ class _PlanCard extends StatelessWidget {
                 isSelected
                     ? Icons.check_circle_rounded
                     : Icons.radio_button_unchecked,
-                color: isSelected ? cs.primary : cs.onSurface.withOpacity(0.4),
+                color: isSelected ? cs.primary : cs.onSurface.withValues(alpha: 0.4),
               ),
             ),
           ],

@@ -229,7 +229,7 @@ class InvestorAboutCard extends StatelessWidget {
             (v) => Chip(
               label: Text(v),
               backgroundColor:
-                  theme.colorScheme.primary.withOpacity(0.08),
+                  theme.colorScheme.primary.withValues(alpha: 0.08),
             ),
           )
           .toList(),

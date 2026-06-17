@@ -107,7 +107,7 @@ class _InvestorSlotsPageState extends State<InvestorSlotsPage> {
           Text(
             "Select a time slot to connect with the investor",
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: cs.onSurface.withOpacity(0.6),
+              color: cs.onSurface.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 24),
@@ -145,7 +145,7 @@ class _InvestorSlotsPageState extends State<InvestorSlotsPage> {
         color: cs.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 20,
             offset: const Offset(0, -4),
           ),
@@ -169,7 +169,7 @@ class _InvestorSlotsPageState extends State<InvestorSlotsPage> {
                     "MMM d, yyyy · h:mm a",
                   ).format(selectedSlot.startDateTime.toLocal()),
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: cs.onSurface.withOpacity(0.6),
+                    color: cs.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ],
@@ -277,14 +277,14 @@ class _InvestorSlotCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           color: cs.surface,
           border: Border.all(
-            color: isSelected ? cs.primary : cs.onSurface.withOpacity(0.15),
+            color: isSelected ? cs.primary : cs.onSurface.withValues(alpha: 0.15),
             width: isSelected ? 2 : 1,
           ),
           boxShadow: [
             BoxShadow(
               color: isSelected
-                  ? cs.primary.withOpacity(0.1)
-                  : Colors.black.withOpacity(0.05),
+                  ? cs.primary.withValues(alpha: 0.1)
+                  : Colors.black.withValues(alpha: 0.05),
               blurRadius: isSelected ? 16 : 10,
               offset: const Offset(0, 6),
             ),
@@ -303,7 +303,7 @@ class _InvestorSlotCard extends StatelessWidget {
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    color: cs.primary.withOpacity(0.1),
+                    color: cs.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Column(
@@ -336,7 +336,7 @@ class _InvestorSlotCard extends StatelessWidget {
                       Text(
                         DateFormat('EEEE').format(slot.startDateTime.toLocal()),
                         style: theme.textTheme.labelSmall?.copyWith(
-                          color: cs.onSurface.withOpacity(0.6),
+                          color: cs.onSurface.withValues(alpha: 0.6),
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -358,7 +358,7 @@ class _InvestorSlotCard extends StatelessWidget {
                       : Icons.radio_button_unchecked,
                   color: isSelected
                       ? cs.primary
-                      : cs.onSurface.withOpacity(0.4),
+                      : cs.onSurface.withValues(alpha: 0.4),
                 ),
               ],
             ),
@@ -404,7 +404,7 @@ class _Chip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(

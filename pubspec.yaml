@@ -66,6 +66,7 @@ dependencies:
   flutter_riverpod: ^2.6.1
   wakelock_plus: ^1.1.4
   flutter_background: ^1.1.0
+  image: ^4.2.0
 
 dev_dependencies:
   flutter_test:

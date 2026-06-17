@@ -174,7 +174,7 @@ class _RegisterPageState extends State<RegisterPage>
                                     : [
                                         BoxShadow(
                                           color:
-                                              Colors.black.withOpacity(0.12),
+                                              Colors.black.withValues(alpha: 0.12),
                                           blurRadius: 24,
                                           offset: const Offset(0, 10),
                                         ),
@@ -218,7 +218,7 @@ class _RegisterPageState extends State<RegisterPage>
                               : [
                                   BoxShadow(
                                     color:
-                                        Colors.black.withOpacity(0.08),
+                                        Colors.black.withValues(alpha: 0.08),
                                     blurRadius: 28,
                                     offset: const Offset(0, 16),
                                   ),

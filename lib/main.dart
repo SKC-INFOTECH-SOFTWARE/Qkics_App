@@ -129,9 +129,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => BookingProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(
-          create: (context) => NotificationProvider(
-            NotificationService(context.read<ApiProvider>().dio),
-          ),
+          create: (context) => NotificationProvider(NotificationService()),
         ),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ],

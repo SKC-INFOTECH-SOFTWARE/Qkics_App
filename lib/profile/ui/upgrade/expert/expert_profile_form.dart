@@ -267,24 +267,24 @@ class _ExpertProfileFormState extends State<ExpertProfileForm> {
 
     switch (status) {
       case 'pending':
-        bgColor = Colors.amber.withOpacity(0.08);
-        borderColor = Colors.amber.withOpacity(0.4);
+        bgColor = Colors.amber.withValues(alpha: 0.08);
+        borderColor = Colors.amber.withValues(alpha: 0.4);
         iconColor = Colors.amber[800]!;
         icon = Icons.hourglass_top_rounded;
         title = 'Under Admin Review';
         subtitle = 'Your application has been submitted and is being reviewed. We\'ll notify you once a decision is made.';
         break;
       case 'approved':
-        bgColor = Colors.green.withOpacity(0.08);
-        borderColor = Colors.green.withOpacity(0.4);
+        bgColor = Colors.green.withValues(alpha: 0.08);
+        borderColor = Colors.green.withValues(alpha: 0.4);
         iconColor = Colors.green[700]!;
         icon = Icons.verified_rounded;
         title = 'Application Approved';
         subtitle = 'Congratulations! Your expert profile has been approved.';
         break;
       case 'rejected':
-        bgColor = Colors.red.withOpacity(0.08);
-        borderColor = Colors.red.withOpacity(0.4);
+        bgColor = Colors.red.withValues(alpha: 0.08);
+        borderColor = Colors.red.withValues(alpha: 0.4);
         iconColor = Colors.red[700]!;
         icon = Icons.cancel_outlined;
         title = 'Application Rejected';
@@ -325,7 +325,7 @@ class _ExpertProfileFormState extends State<ExpertProfileForm> {
                   subtitle,
                   style: TextStyle(
                     fontSize: 12.5,
-                    color: iconColor.withOpacity(0.85),
+                    color: iconColor.withValues(alpha: 0.85),
                     height: 1.4,
                   ),
                 ),
@@ -348,11 +348,11 @@ class _ExpertProfileFormState extends State<ExpertProfileForm> {
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
         ),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.shadow.withOpacity(0.04),
+            color: theme.colorScheme.shadow.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -401,13 +401,13 @@ class _ExpertProfileFormState extends State<ExpertProfileForm> {
           labelText: label,
           hintText: hint,
           hintStyle: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.6),
+            color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
             fontSize: 13,
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(
-              color: Theme.of(context).colorScheme.outline.withOpacity(0.5),
+              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
             ),
           ),
           enabledBorder: OutlineInputBorder(
@@ -424,7 +424,7 @@ class _ExpertProfileFormState extends State<ExpertProfileForm> {
             ),
           ),
           filled: true,
-          fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+          fillColor: Theme.of(context).colorScheme.surfaceVariant.withValues(alpha: 0.3),
           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           isDense: true,
         ),
@@ -439,7 +439,7 @@ class _ExpertProfileFormState extends State<ExpertProfileForm> {
         border: Border.all(
           color: theme.colorScheme.outlineVariant,
         ),
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+        color: theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
       ),
       child: SwitchListTile(
         title: const Text(
@@ -472,14 +472,14 @@ class _ExpertProfileFormState extends State<ExpertProfileForm> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            colorScheme.primary.withOpacity(0.06),
-            colorScheme.secondary.withOpacity(0.04),
+            colorScheme.primary.withValues(alpha: 0.06),
+            colorScheme.secondary.withValues(alpha: 0.04),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colorScheme.primary.withOpacity(0.2)),
+        border: Border.all(color: colorScheme.primary.withValues(alpha: 0.2)),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -490,7 +490,7 @@ class _ExpertProfileFormState extends State<ExpertProfileForm> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: colorScheme.primary.withOpacity(0.1),
+                  color: colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(

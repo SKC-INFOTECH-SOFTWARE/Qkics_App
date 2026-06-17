@@ -57,7 +57,7 @@ class _CompaniesPageState extends State<CompaniesPage> with SingleTickerProvider
         bottom: TabBar(
           controller: _tabController,
           labelColor: colorScheme.primary,
-          unselectedLabelColor: colorScheme.onSurface.withOpacity(0.6),
+          unselectedLabelColor: colorScheme.onSurface.withValues(alpha: 0.6),
           indicatorColor: colorScheme.primary,
           tabs: const [
             Tab(text: "Public"),
@@ -105,13 +105,21 @@ class _CompaniesPageState extends State<CompaniesPage> with SingleTickerProvider
     }
 
     if (companies.isEmpty) {
+      final colorScheme = Theme.of(context).colorScheme;
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.business_center_outlined, size: 64, color: Colors.grey.shade400),
+            Icon(
+              Icons.business_center_outlined,
+              size: 64,
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+            ),
             const SizedBox(height: 16),
-            Text(emptyMessage, style: TextStyle(color: Colors.grey.shade600, fontSize: 16)),
+            Text(
+              emptyMessage,
+              style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 16),
+            ),
           ],
         ),
       );
@@ -150,7 +158,7 @@ class _CompanyCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             offset: const Offset(0, 4),
             blurRadius: 10,
           ),
@@ -206,7 +214,7 @@ class _CompanyCard extends StatelessWidget {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: Colors.black.withValues(alpha: 0.1),
                             blurRadius: 8,
                           ),
                         ],
@@ -250,7 +258,7 @@ class _CompanyCard extends StatelessWidget {
                           Text(
                             company.description,
                             style: textTheme.bodyMedium?.copyWith(
-                              color: colorScheme.onSurface.withOpacity(0.7),
+                              color: colorScheme.onSurface.withValues(alpha: 0.7),
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -262,12 +270,12 @@ class _CompanyCard extends StatelessWidget {
                                 flex: 3,
                                 child: Row(
                                   children: [
-                                    Icon(Icons.location_on_outlined, size: 14, color: Colors.grey.shade600),
+                                    Icon(Icons.location_on_outlined, size: 14, color: colorScheme.onSurfaceVariant),
                                     const SizedBox(width: 4),
                                     Expanded(
                                       child: Text(
                                         company.location,
-                                        style: textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
+                                        style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
@@ -281,12 +289,12 @@ class _CompanyCard extends StatelessWidget {
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
-                                    Icon(Icons.people_outline, size: 14, color: Colors.grey.shade600),
+                                    Icon(Icons.people_outline, size: 14, color: colorScheme.onSurfaceVariant),
                                     const SizedBox(width: 4),
                                     Flexible(
                                       child: Text(
                                         "${company.members.length} members",
-                                        style: textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
+                                        style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),

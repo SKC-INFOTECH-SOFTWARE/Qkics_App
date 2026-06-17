@@ -47,7 +47,7 @@ class _HomeSideMenuState extends State<HomeSideMenu> {
               20 * scale,
               24 * scale,
             ),
-            color: colorScheme.primary.withOpacity(0.05),
+            color: colorScheme.primary.withValues(alpha: 0.05),
             child: InkWell(
               onTap: () {
                 Navigator.push(
@@ -388,7 +388,7 @@ class _HomeSideMenuState extends State<HomeSideMenu> {
         radius: radius,
         backgroundColor: Theme.of(
           context,
-        ).colorScheme.primary.withOpacity(0.15),
+        ).colorScheme.primary.withValues(alpha: 0.15),
         child: Text(
           initial,
           style: TextStyle(

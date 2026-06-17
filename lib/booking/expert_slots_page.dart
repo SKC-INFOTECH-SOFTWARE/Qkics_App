@@ -91,7 +91,7 @@ class _ExpertSlotsPageState extends State<ExpertSlotsPage> {
         children: [
           Text(
             'Select a time slot for your appointment',
-            style: theme.textTheme.bodyMedium?.copyWith(color: cs.onSurface.withOpacity(0.6)),
+            style: theme.textTheme.bodyMedium?.copyWith(color: cs.onSurface.withValues(alpha: 0.6)),
           ),
           const SizedBox(height: 24),
           ...provider.slots.map(
@@ -124,7 +124,7 @@ class _ExpertSlotsPageState extends State<ExpertSlotsPage> {
       decoration: BoxDecoration(
         color: cs.surface,
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, -4)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, -4)),
         ],
       ),
       child: Row(
@@ -152,7 +152,7 @@ class _ExpertSlotsPageState extends State<ExpertSlotsPage> {
                   ),
                 Text(
                   '${selectedSlot.durationMinutes} min session',
-                  style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurface.withOpacity(0.6)),
+                  style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurface.withValues(alpha: 0.6)),
                 ),
               ],
             ),
@@ -255,7 +255,7 @@ class _ExpertSlotsPageState extends State<ExpertSlotsPage> {
                 const SizedBox(height: 6),
                 Text(
                   DateFormat('dd MMM yyyy • hh:mm a').format(slot.startDateTime),
-                  style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurface.withOpacity(0.6)),
+                  style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurface.withValues(alpha: 0.6)),
                 ),
                 const SizedBox(height: 20),
                 if (slot.isChatAvailable)
@@ -319,16 +319,16 @@ class _SessionTypeOption extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.07),
+          color: color.withValues(alpha: 0.07),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Row(
           children: [
             Container(
               width: 44,
               height: 44,
-              decoration: BoxDecoration(color: color.withOpacity(0.12), shape: BoxShape.circle),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.12), shape: BoxShape.circle),
               child: Icon(icon, color: color, size: 22),
             ),
             const SizedBox(width: 14),
@@ -375,14 +375,14 @@ class _SlotCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           color: cs.surface,
           border: Border.all(
-            color: isSelected && available ? cs.primary : cs.onSurface.withOpacity(0.15),
+            color: isSelected && available ? cs.primary : cs.onSurface.withValues(alpha: 0.15),
             width: isSelected && available ? 2 : 1,
           ),
           boxShadow: [
             BoxShadow(
               color: isSelected && available
-                  ? cs.primary.withOpacity(0.1)
-                  : Colors.black.withOpacity(0.05),
+                  ? cs.primary.withValues(alpha: 0.1)
+                  : Colors.black.withValues(alpha: 0.05),
               blurRadius: isSelected && available ? 16 : 10,
               offset: const Offset(0, 6),
             ),
@@ -400,7 +400,7 @@ class _SlotCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
-                      color: available ? cs.primary.withOpacity(0.1) : cs.surfaceVariant,
+                      color: available ? cs.primary.withValues(alpha: 0.1) : cs.surfaceVariant,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Column(
@@ -409,14 +409,14 @@ class _SlotCard extends StatelessWidget {
                           DateFormat('dd').format(slot.startDateTime),
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: available ? cs.primary : cs.onSurface.withOpacity(0.5),
+                            color: available ? cs.primary : cs.onSurface.withValues(alpha: 0.5),
                           ),
                         ),
                         Text(
                           DateFormat('MMM').format(slot.startDateTime),
                           style: theme.textTheme.labelSmall?.copyWith(
                             fontWeight: FontWeight.w600,
-                            color: available ? cs.onSurface : cs.onSurface.withOpacity(0.5),
+                            color: available ? cs.onSurface : cs.onSurface.withValues(alpha: 0.5),
                           ),
                         ),
                       ],
@@ -430,7 +430,7 @@ class _SlotCard extends StatelessWidget {
                         Text(
                           DateFormat('EEEE').format(slot.startDateTime),
                           style: theme.textTheme.labelSmall?.copyWith(
-                            color: cs.onSurface.withOpacity(0.6),
+                            color: cs.onSurface.withValues(alpha: 0.6),
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -483,7 +483,7 @@ class _SlotCard extends StatelessWidget {
                     isSelected && available
                         ? Icons.check_circle_rounded
                         : Icons.radio_button_unchecked,
-                    color: isSelected && available ? cs.primary : cs.onSurface.withOpacity(0.4),
+                    color: isSelected && available ? cs.primary : cs.onSurface.withValues(alpha: 0.4),
                   ),
                 ],
               ),
@@ -505,7 +505,7 @@ class _PricePill extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
@@ -530,7 +530,7 @@ class _Chip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(

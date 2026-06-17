@@ -1,4 +1,5 @@
 // lib/models/post.dart
+import 'package:q_kics/profile/utils/image_utils.dart';
 
 class PostAuthor {
   final int id;
@@ -63,10 +64,11 @@ class PostMedia {
   });
 
   factory PostMedia.fromJson(Map<String, dynamic> json) {
+    final rawFile = (json['file'] ?? '').toString();
     return PostMedia(
       id: json['id'],
       mediaType: json['media_type'] ?? 'image',
-      file: json['file'] ?? '',
+      file: resolveImageUrl(rawFile) ?? rawFile,
       order: json['order'] ?? 0,
     );
   }

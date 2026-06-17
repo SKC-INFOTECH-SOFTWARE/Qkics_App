@@ -154,7 +154,7 @@ class _LoginPageState extends State<LoginPage>
                                     ? []
                                     : [
                                         BoxShadow(
-                                          color: Colors.black.withOpacity(0.12),
+                                          color: Colors.black.withValues(alpha: 0.12),
                                           blurRadius: 24,
                                           offset: const Offset(0, 10),
                                         ),
@@ -197,7 +197,7 @@ class _LoginPageState extends State<LoginPage>
                               ? []
                               : [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.08),
+                                    color: Colors.black.withValues(alpha: 0.08),
                                     blurRadius: 28,
                                     offset: const Offset(0, 16),
                                   ),

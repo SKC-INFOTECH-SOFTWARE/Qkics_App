@@ -8,6 +8,7 @@ import 'package:q_kics/providers/api_provider.dart';
 import 'package:q_kics/models/post.dart';
 import 'package:q_kics/models/tag.dart';
 import 'package:q_kics/providers/navigation_provider.dart';
+import 'package:q_kics/home/image_ratio_selector_sheet.dart';
 
 class CreatePostPage extends StatefulWidget {
   final Post? postToEdit;
@@ -33,6 +34,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
   bool _isKnowledgeHub = false;
 
   late final bool _isEditMode;
+  int? _prevNavIndex;
 
   static const int titleLimit = 200;
   static const int contentLimit = 10000;
@@ -63,9 +65,13 @@ class _CreatePostPageState extends State<CreatePostPage> {
 
     final nav = context.watch<NavigationProvider>();
 
-    if (nav.index == 2 && !_isEditMode) {
+    // Only reset when the user navigates TO this tab from another tab.
+    // Without this guard, _resetForm fires on every NavigationProvider
+    // notification while already on tab 2 (e.g. returning from image picker).
+    if (!_isEditMode && nav.index == 2 && _prevNavIndex != null && _prevNavIndex != 2) {
       _resetForm();
     }
+    _prevNavIndex = nav.index;
   }
 
   void _resetForm() {
@@ -120,14 +126,29 @@ class _CreatePostPageState extends State<CreatePostPage> {
         });
       }
     } else {
-      final picked = await picker.pickMultiImage(imageQuality: 85);
+      final picked = await picker.pickMultiImage(
+        imageQuality: 90,
+        maxWidth: 1440,
+        maxHeight: 1440,
+      );
       if (picked.isNotEmpty && mounted) {
-        setState(() {
-          final remaining = 10 - (_mediaFiles.length + _existingMedia.length);
-          _mediaFiles.addAll(
-            picked.take(remaining).map((p) => File(p.path)).toList(),
-          );
-        });
+        final remaining = 10 - (_mediaFiles.length + _existingMedia.length);
+        final files = picked.take(remaining).map((p) => File(p.path)).toList();
+
+        // Show Instagram-style ratio selector before adding to the post
+        final croppedFiles = await showModalBottomSheet<List<File>>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (_) => SizedBox(
+            height: MediaQuery.of(context).size.height * 0.92,
+            child: ImageRatioSelectorSheet(images: files),
+          ),
+        );
+
+        if (croppedFiles != null && mounted) {
+          setState(() => _mediaFiles.addAll(croppedFiles));
+        }
       }
     }
   }
@@ -236,6 +257,10 @@ class _CreatePostPageState extends State<CreatePostPage> {
             backgroundColor: Colors.green,
           ),
         );
+
+        if (_isEditMode && Navigator.of(context).canPop()) {
+          Navigator.of(context).pop(true);
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -303,7 +328,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
-                        //color: canPost ? Colors.white : Colors.white.withOpacity(0.5),
+                        //color: canPost ? Colors.white : Colors.white.withValues(alpha: 0.5),
                       ),
                     ),
             ),
@@ -498,7 +523,7 @@ class _CreatePostPageState extends State<CreatePostPage> {
                     .map(
                       (tag) => Chip(
                         label: Text(tag),
-                        backgroundColor: colorScheme.primary.withOpacity(0.15),
+                        backgroundColor: colorScheme.primary.withValues(alpha: 0.15),
                         deleteIconColor: colorScheme.primary,
                         onDeleted: () => _toggleTag(tag),
                       ),
@@ -519,8 +544,8 @@ class _CreatePostPageState extends State<CreatePostPage> {
                           return FilterChip(
                             label: Text(tag.name),
                             selected: selected,
-                            selectedColor: colorScheme.primary.withOpacity(
-                              0.25,
+                            selectedColor: colorScheme.primary.withValues(
+                              alpha: 0.25,
                             ),
                             checkmarkColor: colorScheme.primary,
                             onSelected: (_) => _toggleTag(tag.name),

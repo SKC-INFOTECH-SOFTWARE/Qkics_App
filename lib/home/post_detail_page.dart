@@ -183,7 +183,7 @@ class _PostDetailPageState extends State<PostDetailPage>
                     decoration: BoxDecoration(
                       color: isSelected
                           ? colorScheme.primary
-                          : colorScheme.primary.withOpacity(0.3),
+                          : colorScheme.primary.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(3),
                     ),
                   );

@@ -11,6 +11,10 @@ class VideoPlayerWidget extends StatefulWidget {
   final VoidCallback? onTap;
   final bool mute;
 
+  /// Called once, after the video has initialized, with its natural
+  /// (width / height) aspect ratio.
+  final ValueChanged<double>? onAspectRatioResolved;
+
   const VideoPlayerWidget({
     super.key,
     required this.videoUrl,
@@ -20,6 +24,7 @@ class VideoPlayerWidget extends StatefulWidget {
     this.fit = BoxFit.cover,
     this.onTap,
     this.mute = false,
+    this.onAspectRatioResolved,
   });
 
   @override
@@ -62,6 +67,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
             if (widget.autoPlay) {
               _controller.play();
               _controller.setVolume(widget.mute ? 0 : 1.0);
+            }
+            final size = _controller.value.size;
+            if (size.height > 0) {
+              widget.onAspectRatioResolved?.call(size.width / size.height);
             }
           }
         })

@@ -1,47 +1,60 @@
 // lib/providers/notification_provider.dart
+import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
 import '../models/notification_model.dart';
 import '../services/notification_service.dart';
 
 class NotificationProvider with ChangeNotifier {
   final NotificationService _service;
 
+  static const int _pageSize = 20;
+  static const Duration _pollInterval = Duration(seconds: 45);
+
   List<NotificationModel> _notifications = [];
   int _unreadCount = 0;
+  int _total = 0;
   bool _isLoading = false;
-  String? _nextCursor;
-  IO.Socket? _socket;
+  String? _userId;
+  Timer? _pollTimer;
 
   NotificationProvider(this._service);
 
   List<NotificationModel> get notifications => _notifications;
   int get unreadCount => _unreadCount;
   bool get isLoading => _isLoading;
-  bool get hasMore => _nextCursor != null;
+  bool get hasMore => _notifications.length < _total;
 
-  /// Initialize notifications and start socket
+  /// Initialize notifications for [userId] and start polling for updates.
   Future<void> init(String userId) async {
+    _userId = userId;
     await fetchNotifications(forceRefresh: true);
-    _initSocket(userId);
+    _startPolling();
   }
 
-  /// Initial load or refresh
+  /// Initial load, pagination, or refresh.
   Future<void> fetchNotifications({bool forceRefresh = false}) async {
+    final userId = _userId;
+    if (userId == null) return;
     if (_isLoading) return;
-    if (!forceRefresh && _nextCursor == null) return;
+    if (!forceRefresh && _notifications.length >= _total && _total != 0) {
+      return;
+    }
 
     _isLoading = true;
-    if (forceRefresh) {
-      _notifications = [];
-      _nextCursor = null;
-    }
     notifyListeners();
 
     try {
-      final result = await _service.fetchNotifications(cursor: _nextCursor);
-      _notifications.addAll(result['notifications']);
-      _nextCursor = result['next'];
+      final offset = forceRefresh ? 0 : _notifications.length;
+      final result = await _service.fetchNotifications(
+        userId: userId,
+        limit: _pageSize,
+        offset: offset,
+        channel: 'IN_APP',
+      );
+
+      final fetched = result['notifications'] as List<NotificationModel>;
+      _notifications = forceRefresh ? fetched : [..._notifications, ...fetched];
+      _total = result['total'];
       _unreadCount = result['unreadCount'];
     } catch (e) {
       if (kDebugMode) print('Error fetching notifications: $e');
@@ -51,78 +64,37 @@ class NotificationProvider with ChangeNotifier {
     }
   }
 
-  /// Mark as read
+  /// Mark as read (optimistic local update; the API has no read-state body).
   Future<void> markAsRead(String id) async {
-    try {
-      final updated = await _service.markAsRead(id);
+    final index = _notifications.indexWhere((n) => n.id == id);
+    if (index == -1 || _notifications[index].isRead) return;
 
-      final index = _notifications.indexWhere((n) => n.id == id);
-      if (index != -1) {
-        if (!_notifications[index].isRead) {
-          _unreadCount = (_unreadCount - 1).clamp(0, 999);
-        }
-        _notifications[index] = updated;
-        notifyListeners();
-      }
+    try {
+      await _service.markAsRead(id);
+      _notifications[index] = _notifications[index].copyWith(
+        readAt: DateTime.now(),
+      );
+      _unreadCount = (_unreadCount - 1).clamp(0, 999);
+      notifyListeners();
     } catch (e) {
       if (kDebugMode) print('Error marking notification as read: $e');
     }
   }
 
-  /// Socket.IO Integration
-  void _initSocket(String userId) {
-    if (_socket != null) return;
-
-    // TODO: Move base URL and slugs to a config file
-    const socketUrl =
-        'https://qkicsbackend.matchb.online'; // Verify this URL for Socket.IO
-        
-
-    _socket = IO.io(
-      socketUrl,
-      IO.OptionBuilder()
-          .setTransports(['websocket'])
-          .disableAutoConnect()
-          .setQuery({
-            'clientId': 'qkics', // Replace with actual client slug
-            'appId': 'main', // Replace with actual app slug
-            'userId': userId,
-          })
-          .enableReconnection()
-          .build(),
-    );
-
-    _socket!.onConnect((_) {
-      if (kDebugMode) print('Socket connected');
+  void _startPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(_pollInterval, (_) {
+      fetchNotifications(forceRefresh: true);
     });
-    _socket!.onDisconnect((_) {
-      if (kDebugMode) print('Socket disconnected');
-    });
-
-    _socket!.on('notification', (data) {
-      if (kDebugMode) print('New real-time notification: $data');
-      _onSocketNotification(data);
-    });
-
-    _socket!.connect();
-  }
-
-  void _onSocketNotification(dynamic data) {
-    if (data is Map<String, dynamic>) {
-      final notification = NotificationModel.fromJson(data);
-      _notifications.insert(0, notification);
-      _unreadCount++;
-      notifyListeners();
-    }
   }
 
   void disposeSession() {
-    _socket?.disconnect();
-    _socket?.dispose();
-    _socket = null;
+    _pollTimer?.cancel();
+    _pollTimer = null;
+    _userId = null;
     _notifications = [];
     _unreadCount = 0;
-    _nextCursor = null;
+    _total = 0;
     notifyListeners();
   }
 

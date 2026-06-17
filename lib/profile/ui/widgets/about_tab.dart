@@ -94,14 +94,39 @@ class AboutTab extends StatelessWidget {
         // ==================================================
         // BASIC INFO
         // ==================================================
-        _info(context, 'Name', displayName()),
-
-        if (!isPublicView) ...[
-          _info(context, 'Email', profile.email),
-          _info(context, 'Phone', profile.phone),
-        ],
-
-        _info(context, 'Account Type', profile.userType.toUpperCase()),
+        Card(
+          elevation: theme.brightness == Brightness.dark ? 6 : 1,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Column(
+              children: [
+                _infoTile(context, Icons.person_outline, 'Name', displayName()),
+                if (!isPublicView) ...[
+                  _infoTile(
+                    context,
+                    Icons.email_outlined,
+                    'Email',
+                    profile.email,
+                  ),
+                  _infoTile(
+                    context,
+                    Icons.phone_outlined,
+                    'Phone',
+                    profile.phone,
+                  ),
+                ],
+                _infoTile(
+                  context,
+                  Icons.badge_outlined,
+                  'Account Type',
+                  profile.userType.toUpperCase(),
+                  isLast: true,
+                ),
+              ],
+            ),
+          ),
+        ),
 
         // ==================================================
         // ENTREPRENEUR ABOUT
@@ -246,35 +271,61 @@ class AboutTab extends StatelessWidget {
   }
 
   // ======================================================
-  // INFO ROW
+  // INFO TILE (icon + label/value)
   // ======================================================
-  Widget _info(BuildContext context, String label, String value) {
+  Widget _infoTile(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value, {
+    bool isLast = false,
+  }) {
     final theme = Theme.of(context);
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.hintColor,
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: theme.colorScheme.primary.withValues(alpha: 0.8),
               ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.hintColor,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      value,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        ),
+        if (!isLast)
+          Divider(
+            height: 1,
+            indent: 52,
+            color: theme.dividerColor.withValues(alpha: 0.4),
+          ),
+      ],
     );
   }
 }

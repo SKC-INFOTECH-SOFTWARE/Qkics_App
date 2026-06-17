@@ -329,7 +329,7 @@ class _ChatMessagesPageState extends State<ChatMessagesPage> {
         color: Theme.of(context).cardColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             offset: const Offset(0, -1),
             blurRadius: 5,
           ),
@@ -352,7 +352,7 @@ class _ChatMessagesPageState extends State<ChatMessagesPage> {
                     borderSide: BorderSide.none,
                   ),
                   filled: true,
-                  fillColor: Colors.grey[200]?.withOpacity(0.5),
+                  fillColor: Colors.grey[200]?.withValues(alpha: 0.5),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 8,

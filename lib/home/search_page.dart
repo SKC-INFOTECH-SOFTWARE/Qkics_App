@@ -279,7 +279,7 @@ class _UserCard extends StatelessWidget {
                 height: (_isTablet(context) ? 34 : 30) * 2,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: cs.primary.withOpacity(0.15),
+                  color: cs.primary.withValues(alpha: 0.15),
                 ),
                 child: ClipOval(
                   child:
@@ -357,7 +357,7 @@ class _UserCard extends StatelessWidget {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: cs.primary.withOpacity(0.1),
+                  color: cs.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(

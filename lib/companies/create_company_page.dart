@@ -119,7 +119,9 @@ class _CreateCompanyPageState extends State<CreateCompanyPage> {
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('\${isEditing ? "Update failed" : "Creation failed"}: \$errorMsg'),
+              content: Text(
+                '${isEditing ? "Update failed" : "Creation failed"}: $errorMsg',
+              ),
               duration: const Duration(seconds: 4),
               backgroundColor: Colors.red,
             ),
@@ -130,7 +132,7 @@ class _CreateCompanyPageState extends State<CreateCompanyPage> {
           setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('An unexpected error occurred: \$e'),
+              content: Text('An unexpected error occurred: $e'),
               backgroundColor: Colors.red,
             ),
           );
@@ -140,7 +142,7 @@ class _CreateCompanyPageState extends State<CreateCompanyPage> {
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: \$e')),
+          SnackBar(content: Text('Error: $e')),
         );
       }
     }
@@ -241,7 +243,7 @@ class _CreateCompanyPageState extends State<CreateCompanyPage> {
                                   ? DecorationImage(image: NetworkImage(widget.company!.logo!), fit: BoxFit.cover)
                                   : null),
                           boxShadow: [
-                            BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8),
+                            BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8),
                           ],
                         ),
                         child: (_logoFile == null && !(isEditing && widget.company!.logo != null))
@@ -348,11 +350,11 @@ class _CreateCompanyPageState extends State<CreateCompanyPage> {
         prefixIcon: maxLines == 1 ? Icon(icon, color: theme.colorScheme.primary) : null,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
         ),
         filled: true,
         fillColor: theme.colorScheme.surface,

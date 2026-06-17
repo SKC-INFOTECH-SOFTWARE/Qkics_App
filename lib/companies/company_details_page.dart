@@ -7,6 +7,7 @@ import 'package:q_kics/providers/company_provider.dart';
 import 'package:q_kics/companies/create_company_post_page.dart';
 import 'package:q_kics/companies/create_company_page.dart';
 import 'package:q_kics/providers/api_provider.dart';
+import 'package:q_kics/companies/widgets/company_post_card.dart';
 
 class CompanyDetailsPage extends StatefulWidget {
   final Company company;
@@ -17,7 +18,8 @@ class CompanyDetailsPage extends StatefulWidget {
   State<CompanyDetailsPage> createState() => _CompanyDetailsPageState();
 }
 
-class _CompanyDetailsPageState extends State<CompanyDetailsPage> with SingleTickerProviderStateMixin {
+class _CompanyDetailsPageState extends State<CompanyDetailsPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late Future<List<CompanyPost>> _postsFuture;
 
@@ -29,7 +31,9 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> with SingleTick
   }
 
   void _loadPosts() {
-    _postsFuture = context.read<CompanyProvider>().fetchCompanyPosts(widget.company.id);
+    _postsFuture = context.read<CompanyProvider>().fetchCompanyPosts(
+      widget.company.id,
+    );
   }
 
   @override
@@ -47,12 +51,15 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> with SingleTick
 
     bool canManage = false;
     if (currentUser != null) {
-      if (widget.company.owner.toLowerCase().startsWith(currentUser.username.toLowerCase())) {
+      if (widget.company.owner.toLowerCase().startsWith(
+        currentUser.username.toLowerCase(),
+      )) {
         canManage = true;
       } else {
         final memberIdx = widget.company.members.indexWhere((m) {
           if (m.user != null) {
-            return m.user!.uuid == currentUser.uuid || m.user!.username == currentUser.username;
+            return m.user!.uuid == currentUser.uuid ||
+                m.user!.username == currentUser.username;
           } else if (m.userString != null) {
             return m.userString == currentUser.username;
           }
@@ -60,7 +67,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> with SingleTick
         });
         if (memberIdx != -1) {
           final role = widget.company.members[memberIdx].role.toLowerCase();
-          canManage = role == 'owner' || role == 'editor' || role == 'admin';
+          canManage = role == 'owner' || role == 'editor';
         }
       }
     }
@@ -73,7 +80,8 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> with SingleTick
                 final result = await Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => CreateCompanyPostPage(companyId: widget.company.id),
+                    builder: (_) =>
+                        CreateCompanyPostPage(companyId: widget.company.id),
                   ),
                 );
                 if (result == true) {
@@ -103,11 +111,14 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> with SingleTick
                         final updated = await Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => CreateCompanyPage(company: widget.company),
+                            builder: (_) =>
+                                CreateCompanyPage(company: widget.company),
                           ),
                         );
                         if (updated != null && mounted) {
-                          Navigator.pop(context); // Return to previous to refresh list
+                          Navigator.pop(
+                            context,
+                          ); // Return to previous to refresh list
                         }
                       } else if (value == 'delete') {
                         final provider = context.read<CompanyProvider>();
@@ -115,15 +126,28 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> with SingleTick
                           context: context,
                           builder: (ctx) => AlertDialog(
                             title: const Text('Delete Company'),
-                            content: const Text('Are you sure you want to delete this company?'),
+                            content: const Text(
+                              'Are you sure you want to delete this company?',
+                            ),
                             actions: [
-                              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                              TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, true),
+                                child: const Text(
+                                  'Delete',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ),
                             ],
                           ),
                         );
                         if (confirm == true) {
-                          final success = await provider.deleteCompany(widget.company.id);
+                          final success = await provider.deleteCompany(
+                            widget.company.id,
+                          );
                           if (success && mounted) {
                             Navigator.pop(context);
                           }
@@ -131,8 +155,17 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> with SingleTick
                       }
                     },
                     itemBuilder: (context) => [
-                      const PopupMenuItem(value: 'edit', child: Text('Edit Company')),
-                      const PopupMenuItem(value: 'delete', child: Text('Delete Company', style: TextStyle(color: Colors.red))),
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Text('Edit Company'),
+                      ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Text(
+                          'Delete Company',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
                     ],
                   ),
               ],
@@ -145,11 +178,13 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> with SingleTick
                         ? CachedNetworkImage(
                             imageUrl: widget.company.coverImage!,
                             fit: BoxFit.cover,
-                            color: Colors.black.withOpacity(0.3),
+                            color: Colors.black.withValues(alpha: 0.3),
                             colorBlendMode: BlendMode.darken,
                           )
-                        : Container(color: colorScheme.primary.withOpacity(0.8)),
-                    
+                        : Container(
+                            color: colorScheme.primary.withValues(alpha: 0.8),
+                          ),
+
                     // Logo and Title Overlay
                     Positioned(
                       bottom: 20,
@@ -164,9 +199,15 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> with SingleTick
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: colorScheme.surface,
-                              border: Border.all(color: colorScheme.surface, width: 3),
+                              border: Border.all(
+                                color: colorScheme.surface,
+                                width: 3,
+                              ),
                               boxShadow: [
-                                BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10)
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.2),
+                                  blurRadius: 10,
+                                ),
                               ],
                             ),
                             child: ClipOval(
@@ -175,7 +216,11 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> with SingleTick
                                       imageUrl: widget.company.logo!,
                                       fit: BoxFit.cover,
                                     )
-                                  : const Icon(Icons.business, size: 40, color: Colors.grey),
+                                  : const Icon(
+                                      Icons.business,
+                                      size: 40,
+                                      color: Colors.grey,
+                                    ),
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -212,7 +257,9 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> with SingleTick
                 TabBar(
                   controller: _tabController,
                   labelColor: colorScheme.primary,
-                  unselectedLabelColor: colorScheme.onSurface.withOpacity(0.6),
+                  unselectedLabelColor: colorScheme.onSurface.withValues(
+                    alpha: 0.6,
+                  ),
                   indicatorColor: colorScheme.primary,
                   tabs: const [
                     Tab(text: "Posts"),
@@ -237,6 +284,8 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> with SingleTick
   }
 
   Widget _buildPostsTab(bool canManage) {
+    final theme = Theme.of(context);
+
     return FutureBuilder<List<CompanyPost>>(
       future: _postsFuture,
       builder: (context, snapshot) {
@@ -244,20 +293,49 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> with SingleTick
           return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {
-          return const Center(child: Text("Error loading posts."));
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: 48,
+                  color: theme.colorScheme.error,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  "Couldn't load posts.",
+                  style: theme.textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton(
+                  onPressed: () => setState(() => _loadPosts()),
+                  child: const Text("Retry"),
+                ),
+              ],
+            ),
+          );
         }
-        
+
         final posts = snapshot.data ?? [];
         if (posts.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.feed_outlined, size: 60, color: Colors.grey.shade400),
+                Icon(
+                  Icons.feed_outlined,
+                  size: 60,
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.5,
+                  ),
+                ),
                 const SizedBox(height: 16),
                 Text(
                   "No posts yet.",
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -265,83 +343,65 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> with SingleTick
         }
 
         return ListView.separated(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+          padding: EdgeInsets.only(
+            top: 16,
+            bottom: canManage ? 96 : 16,
+          ),
           itemCount: posts.length,
           separatorBuilder: (_, __) => const SizedBox(height: 16),
           itemBuilder: (context, index) {
             final post = posts[index];
-            return Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            post.title,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            return CompanyPostCard(
+              post: post,
+              showCompanyHeader: false,
+              onEdit: canManage
+                  ? () async {
+                      final updated = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CreateCompanyPostPage(
+                            companyId: widget.company.id,
+                            post: post,
                           ),
                         ),
-                        if (canManage)
-                          PopupMenuButton<String>(
-                            padding: EdgeInsets.zero,
-                            icon: const Icon(Icons.more_vert, size: 20),
-                            onSelected: (value) async {
-                              if (value == 'edit') {
-                                final updated = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => CreateCompanyPostPage(companyId: widget.company.id, post: post),
-                                  ),
-                                );
-                                if (updated == true && mounted) setState(() => _loadPosts());
-                              } else if (value == 'delete') {
-                                final confirm = await showDialog<bool>(
-                                  context: context,
-                                  builder: (ctx) => AlertDialog(
-                                    title: const Text('Delete Post'),
-                                    content: const Text('Are you sure you want to delete this post?'),
-                                    actions: [
-                                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
-                                    ],
-                                  ),
-                                );
-                                if (confirm == true && mounted) {
-                                  final success = await context.read<CompanyProvider>().deleteCompanyPost(post.id);
-                                  if (success) setState(() => _loadPosts());
-                                }
-                              }
-                            },
-                            itemBuilder: (context) => [
-                              const PopupMenuItem(value: 'edit', child: Text('Edit Post')),
-                              const PopupMenuItem(value: 'delete', child: Text('Delete Post', style: TextStyle(color: Colors.red))),
-                            ],
+                      );
+                      if (updated == true && mounted) {
+                        setState(() => _loadPosts());
+                      }
+                    }
+                  : null,
+              onDelete: canManage
+                  ? () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Delete Post'),
+                          content: const Text(
+                            'Are you sure you want to delete this post?',
                           ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(post.content),
-                    if (post.media.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: CachedNetworkImage(
-                          imageUrl: post.media.first.file,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: 200,
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text(
+                                'Delete',
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ]
-                  ],
-                ),
-              ),
+                      );
+                      if (confirm == true && mounted) {
+                        final success = await context
+                            .read<CompanyProvider>()
+                            .deleteCompanyPost(post.id);
+                        if (success) setState(() => _loadPosts());
+                      }
+                    }
+                  : null,
             );
           },
         );
@@ -350,6 +410,8 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> with SingleTick
   }
 
   Widget _buildAboutTab(TextTheme textTheme, ColorScheme colorScheme) {
+    final theme = Theme.of(context);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -359,41 +421,102 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> with SingleTick
           const SizedBox(height: 8),
           Text(widget.company.description, style: textTheme.bodyLarge),
           const SizedBox(height: 24),
-          
+
           _buildSectionTitle(textTheme, "Details"),
-          const SizedBox(height: 16),
-          _buildDetailRow(Icons.language, "Website", widget.company.website, colorScheme),
           const SizedBox(height: 12),
-          _buildDetailRow(Icons.location_on, "Location", widget.company.location, colorScheme),
-          const SizedBox(height: 12),
-          _buildDetailRow(Icons.people, "Company Size", "${widget.company.members.length} members", colorScheme),
-          
+          Card(
+            elevation: theme.brightness == Brightness.dark ? 6 : 1,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Column(
+                children: [
+                  _detailTile(
+                    theme,
+                    Icons.language,
+                    "Website",
+                    widget.company.website,
+                  ),
+                  _detailTile(
+                    theme,
+                    Icons.location_on_outlined,
+                    "Location",
+                    widget.company.location,
+                  ),
+                  _detailTile(
+                    theme,
+                    Icons.people_outline,
+                    "Company Size",
+                    "${widget.company.members.length} members",
+                    isLast: true,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
           const SizedBox(height: 32),
           _buildSectionTitle(textTheme, "Team Members"),
-          //const SizedBox(height: 16),
+          const SizedBox(height: 12),
           if (widget.company.members.isEmpty)
-            const Text("No members available")
+            Text(
+              "No members available",
+              style: textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            )
           else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: widget.company.members.length,
-              itemBuilder: (context, index) {
-                final member = widget.company.members[index];
-                final name = member.user?.fullName ?? member.userString ?? 'Unknown';
-                final imageUrl = member.user?.profileImage;
-
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(
-                    backgroundColor: colorScheme.surfaceContainerHighest,
-                    backgroundImage: imageUrl != null ? CachedNetworkImageProvider(imageUrl) : null,
-                    child: imageUrl == null ? const Icon(Icons.person, color: Colors.grey) : null,
+            Card(
+              elevation: theme.brightness == Brightness.dark ? 6 : 1,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: widget.company.members.length,
+                  separatorBuilder: (_, __) => Divider(
+                    height: 1,
+                    indent: 72,
+                    color: theme.dividerColor.withValues(alpha: 0.4),
                   ),
-                  title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: Text(member.role, style: TextStyle(color: colorScheme.primary)),
-                );
-              },
+                  itemBuilder: (context, index) {
+                    final member = widget.company.members[index];
+                    final name =
+                        member.user?.fullName ??
+                        member.userString ??
+                        'Unknown';
+                    final imageUrl = member.user?.profileImage;
+
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: colorScheme.surfaceContainerHighest,
+                        backgroundImage: imageUrl != null
+                            ? CachedNetworkImageProvider(imageUrl)
+                            : null,
+                        child: imageUrl == null
+                            ? Icon(
+                                Icons.person,
+                                color: colorScheme.onSurfaceVariant,
+                              )
+                            : null,
+                      ),
+                      title: Text(
+                        name,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Text(
+                        member.role,
+                        style: TextStyle(color: colorScheme.primary),
+                      ),
+                    );
+                  },
+                ),
+              ),
             ),
         ],
       ),
@@ -407,20 +530,56 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> with SingleTick
     );
   }
 
-  Widget _buildDetailRow(IconData icon, String label, String value, ColorScheme color) {
-    return Row(
+  Widget _detailTile(
+    ThemeData theme,
+    IconData icon,
+    String label,
+    String value, {
+    bool isLast = false,
+  }) {
+    return Column(
       children: [
-        Icon(icon, color: color.primary, size: 20),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              Text(value, style: const TextStyle(fontSize: 14)),
+              Icon(
+                icon,
+                size: 20,
+                color: theme.colorScheme.primary.withValues(alpha: 0.8),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.hintColor,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      value,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
+        if (!isLast)
+          Divider(
+            height: 1,
+            indent: 52,
+            color: theme.dividerColor.withValues(alpha: 0.4),
+          ),
       ],
     );
   }
@@ -438,11 +597,12 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => _tabBar.preferredSize.height;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      color: _color,
-      child: _tabBar,
-    );
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return Container(color: _color, child: _tabBar);
   }
 
   @override

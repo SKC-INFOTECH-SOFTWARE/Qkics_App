@@ -49,9 +49,6 @@ class ProfileHeader extends StatelessWidget {
     final investorProvider = !isPublicView
         ? context.watch<InvestorProfileProvider>()
         : null;
-    final subscriptionProvider = !isPublicView
-        ? context.watch<SubscriptionProvider>()
-        : null;
 
     // ======================================================
     // 🔥 DETERMINE EFFECTIVE PROFILE TYPE
@@ -99,13 +96,13 @@ class ProfileHeader extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            theme.colorScheme.surfaceVariant.withOpacity(0.3),
+            theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
             theme.scaffoldBackgroundColor,
           ],
         ),
         border: Border(
           bottom: BorderSide(
-            color: theme.dividerColor.withOpacity(0.05),
+            color: theme.dividerColor.withValues(alpha: 0.05),
             width: 1,
           ),
         ),
@@ -126,15 +123,15 @@ class ProfileHeader extends StatelessWidget {
                       // Gradient Border Effect
                       gradient: LinearGradient(
                         colors: [
-                          colorScheme.primary.withOpacity(0.8),
-                          colorScheme.secondary.withOpacity(0.8),
+                          colorScheme.primary.withValues(alpha: 0.8),
+                          colorScheme.secondary.withValues(alpha: 0.8),
                         ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: colorScheme.primary.withOpacity(0.2),
+                          color: colorScheme.primary.withValues(alpha: 0.2),
                           blurRadius: 16,
                           offset: const Offset(0, 8),
                         ),
@@ -212,20 +209,20 @@ class ProfileHeader extends StatelessWidget {
                       // ---------- USERNAME + BADGE ----------
                       Row(
                         children: [
-                          Text(
-                            '@${profile.username}',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.textTheme.bodySmall?.color,
-                              fontWeight: FontWeight.w500,
+                          Flexible(
+                            child: Text(
+                              '@${profile.username}',
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.textTheme.bodySmall?.color,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
-                          // _userTypeBadge(theme, effectiveType),
-                          // if (!isPublicView &&
-                          //     subscriptionProvider?.activeSubscription !=
-                          //         null) ...[
-                          //   const SizedBox(width: 8),
-                          //   _premiumBadge(theme),
-                          //],
+                          if (effectiveType != ProfileType.normal) ...[
+                            const SizedBox(width: 8),
+                            _userTypeBadge(theme, effectiveType),
+                          ],
                         ],
                       ),
 
@@ -328,7 +325,7 @@ class ProfileHeader extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  side: BorderSide(color: colorScheme.outline.withOpacity(0.5)),
+                  side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.5)),
                 ),
               ),
             ),
@@ -344,28 +341,28 @@ class ProfileHeader extends StatelessWidget {
 
     switch (type) {
       case ProfileType.expert:
-        badgeColor = Colors.blue.withOpacity(0.1);
+        badgeColor = Colors.blue.withValues(alpha: 0.1);
         textColor = Colors.blue;
         break;
       case ProfileType.entrepreneur:
-        badgeColor = Colors.green.withOpacity(0.1);
+        badgeColor = Colors.green.withValues(alpha: 0.1);
         textColor = Colors.green;
         break;
       case ProfileType.investor:
-        badgeColor = Colors.purple.withOpacity(0.1);
+        badgeColor = Colors.purple.withValues(alpha: 0.1);
         textColor = Colors.purple;
         break;
       default:
-        badgeColor = theme.colorScheme.surfaceVariant;
+        badgeColor = theme.colorScheme.surfaceContainerHighest;
         textColor = theme.colorScheme.onSurfaceVariant;
     }
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: badgeColor,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: textColor.withValues(alpha: 0.25)),
       ),
       child: Text(
         type.name.toUpperCase(),
@@ -393,8 +390,9 @@ class ProfileHeader extends StatelessWidget {
   }
 
   IconData _buttonIcon(ProfileType type, bool hasDraft) {
-    if (type == ProfileType.normal && !hasDraft)
+    if (type == ProfileType.normal && !hasDraft) {
       return Icons.rocket_launch_outlined;
+    }
     if (hasDraft) return Icons.save_as_outlined;
     return Icons.edit_note_outlined;
   }
@@ -403,9 +401,9 @@ class ProfileHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.amber.withOpacity(0.1),
+        color: Colors.amber.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.amber.withOpacity(0.3)),
+        border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -430,7 +428,7 @@ class ProfileHeader extends StatelessWidget {
                   'Your application is currently being reviewed by admins.',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.amber[900]?.withOpacity(0.8),
+                    color: Colors.amber[900]?.withValues(alpha: 0.8),
                   ),
                 ),
               ],
@@ -451,41 +449,6 @@ class ProfileHeader extends StatelessWidget {
     if (context.mounted) {
       await context.read<ProfileProvider>().loadProfile(force: true);
     }
-  }
-
-  Widget _premiumBadge(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.amber[700]!, Colors.orange[800]!],
-        ),
-        borderRadius: BorderRadius.circular(6),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.orange.withOpacity(0.3),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: const Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.star, color: Colors.white, size: 10),
-          SizedBox(width: 4),
-          Text(
-            'PREMIUM',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 10,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _getPremiumButton(BuildContext context, ThemeData theme) {
@@ -511,13 +474,13 @@ class ProfileHeader extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: hasActiveSubscription
-              ? Colors.green.withOpacity(0.1)
-              : theme.colorScheme.primary.withOpacity(0.1),
+              ? Colors.green.withValues(alpha: 0.1)
+              : theme.colorScheme.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: hasActiveSubscription
-                ? Colors.green.withOpacity(0.2)
-                : theme.colorScheme.primary.withOpacity(0.2),
+                ? Colors.green.withValues(alpha: 0.2)
+                : theme.colorScheme.primary.withValues(alpha: 0.2),
           ),
         ),
 

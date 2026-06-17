@@ -93,7 +93,7 @@ class _CertificationSectionState extends State<CertificationSection> {
       leading: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: theme.colorScheme.primary.withOpacity(0.12),
+          color: theme.colorScheme.primary.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Icon(Icons.workspace_premium,
@@ -154,7 +154,7 @@ class _CertificationSectionState extends State<CertificationSection> {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: isExpired
-              ? Colors.red.withOpacity(0.4)
+              ? Colors.red.withValues(alpha: 0.4)
               : Colors.transparent,
         ),
       ),
@@ -312,7 +312,7 @@ class _CertificationSectionState extends State<CertificationSection> {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withOpacity(0.12),
+        color: theme.colorScheme.primary.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Icon(Icons.workspace_premium,
@@ -331,7 +331,7 @@ class _CertificationSectionState extends State<CertificationSection> {
       padding:
           const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: c.withOpacity(0.12),
+        color: c.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(30),
       ),
       child: Row(

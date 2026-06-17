@@ -226,7 +226,7 @@ class SettingsPage extends StatelessWidget {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: colorScheme.error.withOpacity(0.1),
+              backgroundColor: colorScheme.error.withValues(alpha: 0.1),
               foregroundColor: colorScheme.error,
               elevation: 0,
               minimumSize: Size(double.infinity, 56 * scale),
@@ -295,7 +295,7 @@ class _SettingsTile extends StatelessWidget {
       leading: Container(
         padding: EdgeInsets.all(8 * scale),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12 * scale),
         ),
         child: Icon(
@@ -361,13 +361,13 @@ class _ThemeCard extends StatelessWidget {
               border: Border.all(
                 color: isSelected
                     ? colorScheme.primary
-                    : colorScheme.outline.withOpacity(0.2),
+                    : colorScheme.outline.withValues(alpha: 0.2),
                 width: isSelected ? 2 : 1,
               ),
               boxShadow: isSelected
                   ? [
                       BoxShadow(
-                        color: colorScheme.primary.withOpacity(0.2),
+                        color: colorScheme.primary.withValues(alpha: 0.2),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -537,7 +537,7 @@ class _ThemeCard extends StatelessWidget {
                             width: 25,
                             height: 4,
                             decoration: BoxDecoration(
-                              color: content.withOpacity(0.5),
+                              color: content.withValues(alpha: 0.5),
                               borderRadius: BorderRadius.circular(1),
                             ),
                           ),
@@ -549,7 +549,7 @@ class _ThemeCard extends StatelessWidget {
                   Container(
                     height: 1,
                     width: double.infinity,
-                    color: content.withOpacity(0.5),
+                    color: content.withValues(alpha: 0.5),
                   ),
                   const SizedBox(height: 12),
                   // Detailed body mockup
@@ -588,7 +588,7 @@ class _ThemeCard extends StatelessWidget {
                     width: 70,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: content.withOpacity(0.5),
+                      color: content.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(1),
                     ),
                   ),

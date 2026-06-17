@@ -125,7 +125,7 @@ class _HomePageState extends State<HomePage> {
         radius: radius,
         backgroundColor: Theme.of(
           context,
-        ).colorScheme.primary.withOpacity(0.15),
+        ).colorScheme.primary.withValues(alpha: 0.15),
         child: Text(
           initial,
           style: TextStyle(
@@ -154,14 +154,14 @@ class _HomePageState extends State<HomePage> {
             radius: radius,
             backgroundColor: Theme.of(
               context,
-            ).colorScheme.primary.withOpacity(0.15),
+            ).colorScheme.primary.withValues(alpha: 0.15),
             child: Text(initial),
           ),
           errorWidget: (_, __, ___) => CircleAvatar(
             radius: radius,
             backgroundColor: Theme.of(
               context,
-            ).colorScheme.primary.withOpacity(0.15),
+            ).colorScheme.primary.withValues(alpha: 0.15),
             child: Text(initial),
           ),
         ),
@@ -286,10 +286,10 @@ class _HomePageState extends State<HomePage> {
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: colorScheme.primary.withOpacity(0.1),
+                  color: colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: colorScheme.primary.withOpacity(0.2),
+                    color: colorScheme.primary.withValues(alpha: 0.2),
                   ),
                 ),
                 child: Row(

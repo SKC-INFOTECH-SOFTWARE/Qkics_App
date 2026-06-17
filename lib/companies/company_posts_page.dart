@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:q_kics/models/company_post.dart';
 import 'package:q_kics/providers/company_provider.dart';
-import 'package:q_kics/widgets/video_player_widget.dart';
+import 'package:q_kics/companies/widgets/company_post_card.dart';
 
 class CompanyPostsPage extends StatefulWidget {
   const CompanyPostsPage({super.key});
@@ -46,6 +44,7 @@ class _CompanyPostsPageState extends State<CompanyPostsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Consumer<CompanyProvider>(
       builder: (context, provider, child) {
         final posts = provider.globalPosts;
@@ -66,9 +65,20 @@ class _CompanyPostsPageState extends State<CompanyPostsPage> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.article_outlined, size: 64, color: Colors.grey.shade400),
+                      Icon(
+                        Icons.article_outlined,
+                        size: 64,
+                        color: theme.colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.5,
+                        ),
+                      ),
                       const SizedBox(height: 16),
-                      Text("No posts from companies yet.", style: TextStyle(color: Colors.grey.shade600, fontSize: 16)),
+                      Text(
+                        "No posts from companies yet.",
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -92,118 +102,11 @@ class _CompanyPostsPageState extends State<CompanyPostsPage> {
                 );
               }
               final post = posts[index];
-              return _GlobalCompanyPostCard(post: post);
+              return CompanyPostCard(post: post);
             },
           ),
         );
       },
     );
-  }
-}
-
-class _GlobalCompanyPostCard extends StatelessWidget {
-  final CompanyPost post;
-
-  const _GlobalCompanyPostCard({Key? key, required this.post}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: colorScheme.surfaceContainerHighest,
-                  backgroundImage: post.company.logo != null ? NetworkImage(post.company.logo!) : null,
-                  child: post.company.logo == null
-                      ? Icon(Icons.business, color: colorScheme.onSurfaceVariant, size: 20)
-                      : null,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        post.company.name,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        _formatDate(post.createdAt),
-                        style: const TextStyle(color: Colors.grey, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              post.title,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-            const SizedBox(height: 8),
-            Text(post.content),
-            if (post.media.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 200,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: post.media.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                  itemBuilder: (context, mIdx) {
-                    final isVideo = post.media[mIdx].isVideo;
-                    return ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: isVideo
-                          ? SizedBox(
-                              width: 200,
-                              child: VideoPlayerWidget(videoUrl: post.media[mIdx].file),
-                            )
-                          : CachedNetworkImage(
-                              imageUrl: post.media[mIdx].file,
-                              height: 200,
-                              width: 200,
-                              fit: BoxFit.cover,
-                            ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _formatDate(DateTime date) {
-    final diff = DateTime.now().difference(date);
-    if (diff.inDays > 0) {
-      if (diff.inDays > 30) {
-        return "${date.day}/${date.month}/${date.year}";
-      }
-      return "${diff.inDays}d ago";
-    } else if (diff.inHours > 0) {
-      return "${diff.inHours}h ago";
-    } else if (diff.inMinutes > 0) {
-      return "${diff.inMinutes}m ago";
-    } else {
-      return "Just now";
-    }
   }
 }

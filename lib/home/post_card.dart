@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -23,22 +25,100 @@ class PostCard extends StatefulWidget {
   State<PostCard> createState() => _PostCardState();
 }
 
-class _PostCardState extends State<PostCard> {
+class _PostCardState extends State<PostCard>
+    with SingleTickerProviderStateMixin {
+  // Videos → 4:5 portrait (Instagram's default feed video ratio).
+  // Images → ratio detected from actual image dimensions after upload.
+  static const double _kVideoAspectRatio = 4.0 / 5.0;
+  // Fallback while image dimensions are being detected.
+  static const double _kImageAspectRatioFallback = 1.0;
+
+  // Detected from the first image in this post's media list.
+  double? _detectedImageRatio;
+
   final ValueNotifier<bool> _isExpanded = ValueNotifier(false);
   late PageController _mediaPageController;
+  late AnimationController _heartController;
   int _currentMediaIndex = 0;
+  bool _showHeart = false;
 
   @override
   void initState() {
     super.initState();
     _mediaPageController = PageController();
+    _heartController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+
+    // Kick off a one-time dimension probe for the first image so the feed
+    // respects whichever ratio (1:1 / 4:5 / 16:9) the user chose when posting.
+    final media = widget.post.media;
+    if (media.isNotEmpty && !media.first.isVideo) {
+      _detectImageRatio(media.first.file);
+    }
+  }
+
+  void _detectImageRatio(String imageUrl) {
+    final provider = CachedNetworkImageProvider(imageUrl);
+    final stream = provider.resolve(ImageConfiguration.empty);
+    late ImageStreamListener listener;
+    listener = ImageStreamListener(
+      (info, _) {
+        if (mounted) {
+          final w = info.image.width.toDouble();
+          final h = info.image.height.toDouble();
+          // Clamp to the range supported by the ratio picker (portrait → landscape).
+          setState(() {
+            _detectedImageRatio = (w / h).clamp(4.0 / 5.0, 16.0 / 9.0);
+          });
+        }
+        stream.removeListener(listener);
+      },
+      onError: (_, __) => stream.removeListener(listener),
+    );
+    stream.addListener(listener);
   }
 
   @override
   void dispose() {
     _isExpanded.dispose();
     _mediaPageController.dispose();
+    _heartController.dispose();
     super.dispose();
+  }
+
+  Future<void> _toggleLike(Post post, ApiProvider api) async {
+    final wasLiked = post.isLiked;
+    final previousLikes = post.totalLikes;
+    final newLikes = wasLiked ? post.totalLikes - 1 : post.totalLikes + 1;
+    setState(() {
+      post.isLiked = !wasLiked;
+      post.totalLikes = newLikes;
+    });
+    final messenger = ScaffoldMessenger.of(context);
+    final success = await api.togglePostLike(post.id);
+    if (!mounted) return;
+    if (success) return;
+    setState(() {
+      post.isLiked = wasLiked;
+      post.totalLikes = previousLikes;
+    });
+    messenger.showSnackBar(
+      const SnackBar(content: Text("Couldn't update like. Please try again.")),
+    );
+  }
+
+  void _handleDoubleTapLike(Post post, ApiProvider api) {
+    if (!post.isLiked) {
+      _toggleLike(post, api);
+    }
+    setState(() => _showHeart = true);
+    _heartController.forward(from: 0).then((_) {
+      Future.delayed(const Duration(milliseconds: 400), () {
+        if (mounted) setState(() => _showHeart = false);
+      });
+    });
   }
 
   void _openPublicProfile(String username) {
@@ -69,7 +149,7 @@ class _PostCardState extends State<PostCard> {
         radius: radius,
         backgroundColor: Theme.of(
           context,
-        ).colorScheme.primary.withOpacity(0.15),
+        ).colorScheme.primary.withValues(alpha: 0.15),
         child: Text(
           initial,
           style: TextStyle(
@@ -96,14 +176,14 @@ class _PostCardState extends State<PostCard> {
             radius: radius,
             backgroundColor: Theme.of(
               context,
-            ).colorScheme.primary.withOpacity(0.15),
+            ).colorScheme.primary.withValues(alpha: 0.15),
             child: Text(initial),
           ),
           errorWidget: (_, __, ___) => CircleAvatar(
             radius: radius,
             backgroundColor: Theme.of(
               context,
-            ).colorScheme.primary.withOpacity(0.15),
+            ).colorScheme.primary.withValues(alpha: 0.15),
             child: Text(initial),
           ),
         ),
@@ -180,12 +260,12 @@ class _PostCardState extends State<PostCard> {
                                   decoration: BoxDecoration(
                                     color: _userTypeColor(
                                       post.author.userTypeDisplay,
-                                    ).withOpacity(0.1),
+                                    ).withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(4),
                                     border: Border.all(
                                       color: _userTypeColor(
                                         post.author.userTypeDisplay,
-                                      ).withOpacity(0.3),
+                                      ).withValues(alpha: 0.3),
                                       width: 0.5,
                                     ),
                                   ),
@@ -359,24 +439,14 @@ class _PostCardState extends State<PostCard> {
                     .toList(),
               ),
             ),
-          _buildMedia(post, scale),
+          _buildMedia(post, scale, api),
           const SizedBox(height: 10),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Row(
               children: [
                 GestureDetector(
-                  onTap: () async {
-                    final wasLiked = post.isLiked;
-                    final newLikes = wasLiked
-                        ? post.totalLikes - 1
-                        : post.totalLikes + 1;
-                    setState(() {
-                      post.isLiked = !wasLiked;
-                      post.totalLikes = newLikes;
-                    });
-                    await api.togglePostLike(post.id);
-                  },
+                  onTap: () => _toggleLike(post, api),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     child: Row(
@@ -439,30 +509,56 @@ class _PostCardState extends State<PostCard> {
     );
   }
 
-  Widget _buildMedia(Post post, double scale) {
+  Widget _buildMedia(Post post, double scale, ApiProvider api) {
     if (post.media.isEmpty) return const SizedBox.shrink();
+
+    final boxRatio = post.media.first.isVideo
+        ? _kVideoAspectRatio
+        : (_detectedImageRatio ?? _kImageAspectRatioFallback);
 
     return Column(
       children: [
         const SizedBox(height: 12),
         AspectRatio(
-          aspectRatio: 0.9, // Instagram square style
+          aspectRatio: boxRatio,
           child: Stack(
+            alignment: Alignment.center,
             children: [
               PageView.builder(
                 controller: _mediaPageController,
                 itemCount: post.media.length,
                 onPageChanged: (index) {
-                  setState(() {
-                    _currentMediaIndex = index;
-                  });
+                  setState(() => _currentMediaIndex = index);
                 },
                 itemBuilder: (context, index) {
                   final media = post.media[index];
-                  return _buildMediaItem(media, post.id);
+                  return _buildMediaItem(media, post, api);
                 },
               ),
-              // Page Count Overlay (Top Right)
+              // Double-tap like burst
+              IgnorePointer(
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 0.6, end: 1.3).animate(
+                    CurvedAnimation(
+                      parent: _heartController,
+                      curve: Curves.elasticOut,
+                    ),
+                  ),
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 200),
+                    opacity: _showHeart ? 1 : 0,
+                    child: const Icon(
+                      Icons.thumb_up,
+                      color: Colors.white,
+                      size: 100,
+                      shadows: [
+                        Shadow(color: Colors.black38, blurRadius: 16),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              // Page count badge (top-right)
               if (post.media.length > 1)
                 Positioned(
                   top: 12,
@@ -473,7 +569,7 @@ class _PostCardState extends State<PostCard> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.6),
+                      color: Colors.black.withValues(alpha: 0.6),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -486,7 +582,7 @@ class _PostCardState extends State<PostCard> {
                     ),
                   ),
                 ),
-              // Dots Indicator Overlay (Bottom Center)
+              // Dot indicators (bottom-center)
               if (post.media.length > 1)
                 Positioned(
                   bottom: 12,
@@ -505,11 +601,11 @@ class _PostCardState extends State<PostCard> {
                           shape: BoxShape.circle,
                           color: _currentMediaIndex == index
                               ? Theme.of(context).colorScheme.primary
-                              : Colors.white.withOpacity(0.5),
+                              : Colors.white.withValues(alpha: 0.5),
                           boxShadow: [
                             if (_currentMediaIndex == index)
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
+                                color: Colors.black.withValues(alpha: 0.2),
                                 blurRadius: 2,
                                 spreadRadius: 1,
                               ),
@@ -526,61 +622,96 @@ class _PostCardState extends State<PostCard> {
     );
   }
 
-  Widget _buildMediaItem(PostMedia media, int postId) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => PostDetailPage(
-              post: widget.post,
-              currentUserId: widget.currentUserId,
-            ),
+  Widget _buildMediaItem(PostMedia media, Post post, ApiProvider api) {
+    void openDetail() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PostDetailPage(
+            post: widget.post,
+            currentUserId: widget.currentUserId,
           ),
-        );
-      },
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: openDetail,
+      onDoubleTap: () => _handleDoubleTapLike(post, api),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(0),
         child: media.isVideo
-            ? VideoPlayerWidget(
-                videoUrl: media.file,
-                aspectRatio: 0.9,
-                fit: BoxFit.contain,
-                autoPlay: true,
-                mute: true,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => PostDetailPage(
-                        post: widget.post,
-                        currentUserId: widget.currentUserId,
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Blurred fill behind the video so the 1:1 box has no bars.
+                  IgnorePointer(
+                    child: ImageFiltered(
+                      imageFilter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                      child: VideoPlayerWidget(
+                        videoUrl: media.file,
+                        fit: BoxFit.cover,
+                        autoPlay: true,
+                        mute: true,
                       ),
                     ),
-                  );
-                },
+                  ),
+                  Container(color: Colors.black.withValues(alpha: 0.25)),
+                  // Cover-fit so video fills the fixed 1:1 box (center-crop).
+                  VideoPlayerWidget(
+                    videoUrl: media.file,
+                    fit: BoxFit.cover,
+                    autoPlay: true,
+                    mute: true,
+                    onTap: openDetail,
+                  ),
+                ],
               )
-            : CachedNetworkImage(
-                imageUrl: media.file,
-
-                fit: BoxFit.contain,
-                width: double.infinity,
-                memCacheWidth: 800,
-                placeholder: (context, url) => Shimmer.fromColors(
-                  baseColor: Colors.grey[300]!,
-                  highlightColor: Colors.grey[100]!,
-                  child: Container(color: Colors.white),
-                ),
-                errorWidget: (context, url, error) => Container(
-                  color: Colors.grey[200],
-                  child: const Center(
-                    child: Icon(
-                      Icons.broken_image_outlined,
-                      size: 50,
-                      color: Colors.grey,
+            : Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Blurred backdrop — fills any aspect-ratio gap during load
+                  // and gives the Instagram "soft edge" look.
+                  IgnorePointer(
+                    child: ImageFiltered(
+                      imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+                      child: CachedNetworkImage(
+                        imageUrl: media.file,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                      ),
                     ),
                   ),
-                ),
+                  Container(color: Colors.black.withValues(alpha: 0.08)),
+                  // Main image — cover fills the frame completely once the
+                  // aspect ratio is resolved.
+                  CachedNetworkImage(
+                    imageUrl: media.file,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                    memCacheWidth: (MediaQuery.of(context).size.width *
+                            MediaQuery.of(context).devicePixelRatio)
+                        .toInt()
+                        .clamp(800, 2160),
+                    placeholder: (context, url) => Shimmer.fromColors(
+                      baseColor: Colors.grey[300]!,
+                      highlightColor: Colors.grey[100]!,
+                      child: Container(color: Colors.white),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      color: Colors.grey[200],
+                      child: const Center(
+                        child: Icon(
+                          Icons.broken_image_outlined,
+                          size: 50,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
       ),
     );

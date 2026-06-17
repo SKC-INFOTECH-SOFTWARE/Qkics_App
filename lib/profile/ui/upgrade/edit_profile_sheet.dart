@@ -95,7 +95,7 @@ class _EditbasicProfileSheetState extends State<EditbasicProfileSheet> {
                 width: 48,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: theme.dividerColor.withOpacity(0.2),
+                  color: theme.dividerColor.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -127,7 +127,7 @@ class _EditbasicProfileSheetState extends State<EditbasicProfileSheet> {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: Colors.black.withValues(alpha: 0.1),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -169,7 +169,7 @@ class _EditbasicProfileSheetState extends State<EditbasicProfileSheet> {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: colorScheme.primary.withOpacity(0.3),
+                              color: colorScheme.primary.withValues(alpha: 0.3),
                               blurRadius: 8,
                               offset: const Offset(0, 4),
                             ),
@@ -262,7 +262,7 @@ class _EditbasicProfileSheetState extends State<EditbasicProfileSheet> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -277,7 +277,7 @@ class _EditbasicProfileSheetState extends State<EditbasicProfileSheet> {
           labelStyle: TextStyle(
             color: Theme.of(
               context,
-            ).colorScheme.onSurfaceVariant.withOpacity(0.7),
+            ).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
           ),
           prefixIcon: Icon(
             icon,
@@ -287,7 +287,7 @@ class _EditbasicProfileSheetState extends State<EditbasicProfileSheet> {
           filled: true,
           fillColor: Theme.of(
             context,
-          ).colorScheme.surfaceVariant.withOpacity(0.1),
+          ).colorScheme.surfaceVariant.withValues(alpha: 0.1),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,
@@ -299,7 +299,7 @@ class _EditbasicProfileSheetState extends State<EditbasicProfileSheet> {
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
               width: 1.5,
             ),
           ),

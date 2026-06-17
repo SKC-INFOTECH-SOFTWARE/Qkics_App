@@ -111,7 +111,7 @@ class PushNotificationService {
     // Navigation logic will be handled via a GlobalKey or similar in the UI layer
   }
 
-  Future<void> registerToken() async {
+  Future<void> registerToken({required String userId}) async {
     if (_apiService == null) return;
 
     try {
@@ -125,6 +125,7 @@ class PushNotificationService {
 
       if (token != null) {
         await _apiService!.registerPushToken(
+          userId: userId,
           token: token,
           platform: Platform.isAndroid ? 'android' : 'ios',
           deviceId: null, // Optional

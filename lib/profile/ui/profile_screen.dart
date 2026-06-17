@@ -144,7 +144,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final tabCount = isNormal ? 2 : 3;
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.background,
+      backgroundColor: theme.colorScheme.surface,
       body: Consumer<ProfileProvider>(
         builder: (_, provider, __) {
           if (provider.loadingProfile || provider.profile == null) {
@@ -169,7 +169,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       pinned: true,
                       expandedHeight: 0,
                       toolbarHeight: 0, // Keep only status bar background
-                      backgroundColor: theme.colorScheme.background,
+                      backgroundColor: theme.colorScheme.surface,
                       elevation: 0,
                       surfaceTintColor: Colors.transparent,
                     ),
@@ -417,7 +417,7 @@ class _ProfileShimmer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final baseColor = theme.colorScheme.surfaceVariant;
+    final baseColor = theme.colorScheme.surfaceContainerHighest;
     final highlightColor = theme.colorScheme.surface;
 
     return Shimmer.fromColors(

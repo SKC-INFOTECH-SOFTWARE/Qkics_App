@@ -125,7 +125,7 @@ class ApiProvider with ChangeNotifier {
     _setupInterceptors();
 
     // Set up API service for push notifications
-    PushNotificationService.instance.setApiService(NotificationService(_dio));
+    PushNotificationService.instance.setApiService(NotificationService());
 
     notifyListeners();
   }
@@ -277,7 +277,11 @@ class ApiProvider with ChangeNotifier {
         }
 
         // Register Push Token after login
-        await PushNotificationService.instance.registerToken();
+        if (_currentUser != null) {
+          await PushNotificationService.instance.registerToken(
+            userId: _currentUser!.id.toString(),
+          );
+        }
 
         notifyListeners();
         return true;
@@ -769,7 +773,7 @@ class ApiProvider with ChangeNotifier {
   }
 
   // Toggle Like on Post
-  Future<void> togglePostLike(int postId) async {
+  Future<bool> togglePostLike(int postId) async {
     try {
       final response = await _dio.post("/api/v1/community/posts/$postId/like/");
       if (response.statusCode == 200) {
@@ -785,9 +789,12 @@ class ApiProvider with ChangeNotifier {
         }).toList();
 
         notifyListeners();
+        return true;
       }
+      return false;
     } catch (e) {
       debugPrint("Post like error: $e");
+      return false;
     }
   }
 

@@ -163,7 +163,7 @@ class _KnowledgeHubPageState extends State<KnowledgeHubPage> {
             decoration: BoxDecoration(
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 15,
                   offset: const Offset(0, 5),
                 ),
@@ -182,7 +182,7 @@ class _KnowledgeHubPageState extends State<KnowledgeHubPage> {
               decoration: InputDecoration(
                 hintText: "Search knowledge base...",
                 hintStyle: GoogleFonts.inter(
-                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
                 ),
                 prefixIcon: Icon(
                   Icons.search,
@@ -257,7 +257,7 @@ class _KnowledgeHubPageState extends State<KnowledgeHubPage> {
 
   Widget _buildShimmer(ThemeData theme) {
     return Shimmer.fromColors(
-      baseColor: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+      baseColor: theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
       highlightColor: theme.colorScheme.surface,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
@@ -282,13 +282,13 @@ class _KnowledgeHubPageState extends State<KnowledgeHubPage> {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.05),
+              color: theme.colorScheme.primary.withValues(alpha: 0.05),
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.description_outlined,
               size: 64,
-              color: theme.colorScheme.primary.withOpacity(0.3),
+              color: theme.colorScheme.primary.withValues(alpha: 0.3),
             ),
           ),
           const SizedBox(height: 20),
@@ -339,12 +339,12 @@ class _DocumentCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: (isPremium || isPaid)
-                ? theme.colorScheme.primary.withOpacity(0.1)
+                ? theme.colorScheme.primary.withValues(alpha: 0.1)
                 : Colors.transparent,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 15,
               offset: const Offset(0, 6),
             ),
@@ -359,12 +359,12 @@ class _DocumentCard extends StatelessWidget {
                 gradient: LinearGradient(
                   colors: isPremium
                       ? [
-                          theme.colorScheme.primary.withOpacity(0.2),
-                          theme.colorScheme.primary.withOpacity(0.05),
+                          theme.colorScheme.primary.withValues(alpha: 0.2),
+                          theme.colorScheme.primary.withValues(alpha: 0.05),
                         ]
                       : [
-                          Colors.blue.withOpacity(0.1),
-                          Colors.blue.withOpacity(0.02),
+                          Colors.blue.withValues(alpha: 0.1),
+                          Colors.blue.withValues(alpha: 0.02),
                         ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -422,7 +422,7 @@ class _DocumentCard extends StatelessWidget {
             const SizedBox(width: 8),
             Icon(
               Icons.chevron_right,
-              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.3),
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
             ),
           ],
         ),
@@ -442,9 +442,9 @@ class _CompactBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.2), width: 0.5),
+        border: Border.all(color: color.withValues(alpha: 0.2), width: 0.5),
       ),
       child: Text(
         label,
@@ -500,7 +500,7 @@ class _HistoryCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
+              color: Colors.black.withValues(alpha: 0.02),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -511,7 +511,7 @@ class _HistoryCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.08),
+                color: theme.colorScheme.primary.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -612,7 +612,7 @@ class _PremiumChipState extends State<_PremiumChip>
                 ? LinearGradient(
                     colors: [
                       theme.colorScheme.primary,
-                      theme.colorScheme.primary.withOpacity(0.8),
+                      theme.colorScheme.primary.withValues(alpha: 0.8),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -623,13 +623,13 @@ class _PremiumChipState extends State<_PremiumChip>
             border: Border.all(
               color: widget.isSelected
                   ? Colors.transparent
-                  : theme.colorScheme.outlineVariant.withOpacity(0.5),
+                  : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
               width: 1,
             ),
             boxShadow: widget.isSelected
                 ? [
                     BoxShadow(
-                      color: theme.colorScheme.primary.withOpacity(0.3),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.3),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),

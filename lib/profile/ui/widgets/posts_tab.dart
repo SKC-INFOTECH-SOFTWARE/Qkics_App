@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:q_kics/models/post.dart';
 import 'package:q_kics/providers/api_provider.dart';
-import 'post_card.dart';
+import 'package:q_kics/home/post_card.dart';
 
 class PostsTab extends StatelessWidget {
   final List<Post> posts;
@@ -11,19 +11,28 @@ class PostsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    print('🟡 PostsTab received posts: ${posts.length}');
-
+    final theme = Theme.of(context);
     final api = context.watch<ApiProvider>();
     final currentUserId = api.currentUser?.id;
 
     if (posts.isEmpty) {
-      return const Center(
-        child: Text(
-          'No posts yet',
-          style: TextStyle(
-            fontSize: 15,
-            color: Colors.grey,
-          ),
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.article_outlined,
+              size: 48,
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No posts yet',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -34,13 +43,13 @@ class PostsTab extends StatelessWidget {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.only(top: 12, bottom: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 12).copyWith(
+        top: 12,
+        bottom: 24,
+      ),
       itemCount: posts.length,
       itemBuilder: (_, index) {
-        return PostCard(
-          post: posts[index],
-          currentUserId: currentUserId, // ✅ REAL USER ID
-        );
+        return PostCard(post: posts[index], currentUserId: currentUserId);
       },
     );
   }

@@ -156,8 +156,8 @@ class _UploadDocumentPageState extends State<UploadDocumentPage> {
         padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
         decoration: BoxDecoration(
           color: _selectedFile != null
-              ? theme.colorScheme.primary.withOpacity(0.05)
-              : theme.colorScheme.surfaceVariant.withOpacity(0.3),
+              ? theme.colorScheme.primary.withValues(alpha: 0.05)
+              : theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
             color: _selectedFile != null
@@ -173,8 +173,8 @@ class _UploadDocumentPageState extends State<UploadDocumentPage> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: _selectedFile != null
-                    ? theme.colorScheme.primary.withOpacity(0.1)
-                    : theme.colorScheme.onSurface.withOpacity(0.05),
+                    ? theme.colorScheme.primary.withValues(alpha: 0.1)
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.05),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -210,7 +210,7 @@ class _UploadDocumentPageState extends State<UploadDocumentPage> {
               Text(
                 "PDF only, max 20MB",
                 style: GoogleFonts.inter(
-                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
                   fontSize: 12,
                 ),
               ),
@@ -250,7 +250,7 @@ class _UploadDocumentPageState extends State<UploadDocumentPage> {
             prefixIcon: Icon(
               icon,
               size: 20,
-              color: theme.colorScheme.primary.withOpacity(0.7),
+              color: theme.colorScheme.primary.withValues(alpha: 0.7),
             ),
             filled: true,
             fillColor: theme.colorScheme.surface,
@@ -319,7 +319,7 @@ class _UploadDocumentPageState extends State<UploadDocumentPage> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.primary.withOpacity(0.3),
+            color: theme.colorScheme.primary.withValues(alpha: 0.3),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -393,7 +393,7 @@ class _SelectableChip extends StatelessWidget {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: theme.colorScheme.primary.withOpacity(0.2),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.2),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),

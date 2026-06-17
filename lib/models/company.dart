@@ -1,4 +1,5 @@
 import 'package:q_kics/models/user.dart';
+import 'package:q_kics/profile/utils/image_utils.dart';
 
 class CompanyMember {
   final String id;
@@ -84,8 +85,8 @@ class Company {
       id: json['id'] ?? '',
       name: json['name'] ?? '',
       slug: json['slug'] ?? '',
-      logo: json['logo'],
-      coverImage: json['cover_image'] ?? json['cover_picture'],
+      logo: resolveImageUrl(json['logo']),
+      coverImage: resolveImageUrl(json['cover_image'] ?? json['cover_picture']),
       description: json['description'] ?? '',
       industry: json['industry'] ?? '',
       website: json['website'] ?? '',

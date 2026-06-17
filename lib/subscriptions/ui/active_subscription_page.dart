@@ -110,7 +110,7 @@ class _ActiveSubscriptionPageState extends State<ActiveSubscriptionPage> {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: cs.primaryContainer.withOpacity(0.3),
+                color: cs.primaryContainer.withValues(alpha: 0.3),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -131,7 +131,7 @@ class _ActiveSubscriptionPageState extends State<ActiveSubscriptionPage> {
               "Subscribe to a plan to unlock premium features and benefits",
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: cs.onSurface.withOpacity(0.6),
+                color: cs.onSurface.withValues(alpha: 0.6),
               ),
             ),
             const SizedBox(height: 32),
@@ -237,14 +237,14 @@ class _ActiveSubscriptionPageState extends State<ActiveSubscriptionPage> {
         color: cs.surface,
         border: Border.all(
           color: isExpiringSoon
-              ? Colors.orange.withOpacity(0.5)
-              : cs.primary.withOpacity(0.5),
+              ? Colors.orange.withValues(alpha: 0.5)
+              : cs.primary.withValues(alpha: 0.5),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: (isExpiringSoon ? Colors.orange : cs.primary).withOpacity(
-              0.1,
+            color: (isExpiringSoon ? Colors.orange : cs.primary).withValues(
+              alpha: 0.1,
             ),
             blurRadius: 20,
             offset: const Offset(0, 8),
@@ -300,7 +300,7 @@ class _ActiveSubscriptionPageState extends State<ActiveSubscriptionPage> {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: cs.primaryContainer.withOpacity(0.3),
+                  color: cs.primaryContainer.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -332,7 +332,7 @@ class _ActiveSubscriptionPageState extends State<ActiveSubscriptionPage> {
                   Text(
                     "${(progress * 100).toInt()}% used",
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: cs.onSurface.withOpacity(0.6),
+                      color: cs.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
@@ -359,7 +359,7 @@ class _ActiveSubscriptionPageState extends State<ActiveSubscriptionPage> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: isExpiringSoon
-                  ? Colors.orange.withOpacity(0.1)
+                  ? Colors.orange.withValues(alpha: 0.1)
                   : cs.surfaceVariant,
               borderRadius: BorderRadius.circular(12),
             ),
@@ -380,7 +380,7 @@ class _ActiveSubscriptionPageState extends State<ActiveSubscriptionPage> {
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: isExpiringSoon
                         ? Colors.orange
-                        : cs.onSurface.withOpacity(0.7),
+                        : cs.onSurface.withValues(alpha: 0.7),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -459,7 +459,7 @@ class _ActiveSubscriptionPageState extends State<ActiveSubscriptionPage> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         color: cs.surface,
-        border: Border.all(color: cs.onSurface.withOpacity(0.1)),
+        border: Border.all(color: cs.onSurface.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -513,7 +513,7 @@ class _ActiveSubscriptionPageState extends State<ActiveSubscriptionPage> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: cs.surfaceVariant.withOpacity(0.3),
+        color: cs.surfaceVariant.withValues(alpha: 0.3),
       ),
       child: Column(
         children: [
@@ -607,7 +607,7 @@ class _UsageCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         color: cs.surface,
-        border: Border.all(color: cs.onSurface.withOpacity(0.1)),
+        border: Border.all(color: cs.onSurface.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -617,7 +617,7 @@ class _UsageCard extends StatelessWidget {
           Text(
             title,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: cs.onSurface.withOpacity(0.6),
+              color: cs.onSurface.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 8),
@@ -667,14 +667,14 @@ class _ConsultationCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         color: cs.surface,
-        border: Border.all(color: cs.onSurface.withOpacity(0.1)),
+        border: Border.all(color: cs.onSurface.withValues(alpha: 0.1)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.1),
+              color: Colors.green.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(
@@ -698,7 +698,7 @@ class _ConsultationCard extends StatelessWidget {
                 Text(
                   used ? "Used" : "Available",
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: cs.onSurface.withOpacity(0.6),
+                    color: cs.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ],
@@ -707,14 +707,14 @@ class _ConsultationCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: used ? cs.surfaceVariant : Colors.green.withOpacity(0.1),
+              color: used ? cs.surfaceVariant : Colors.green.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               used ? "0 / $total" : "$total Available",
               style: theme.textTheme.bodySmall?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: used ? cs.onSurface.withOpacity(0.6) : Colors.green,
+                color: used ? cs.onSurface.withValues(alpha: 0.6) : Colors.green,
               ),
             ),
           ),
@@ -782,7 +782,7 @@ class _InfoRow extends StatelessWidget {
         Text(
           label,
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: cs.onSurface.withOpacity(0.6),
+            color: cs.onSurface.withValues(alpha: 0.6),
           ),
         ),
         Text(

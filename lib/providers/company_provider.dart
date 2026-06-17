@@ -4,6 +4,15 @@ import 'package:q_kics/models/company.dart';
 import 'package:q_kics/models/company_post.dart';
 import 'package:q_kics/providers/api_provider.dart';
 
+class CompanyPostPaymentRequiredException implements Exception {
+  final double price;
+
+  const CompanyPostPaymentRequiredException({required this.price});
+
+  @override
+  String toString() => 'Payment required: $price';
+}
+
 class CompanyProvider with ChangeNotifier {
   final ApiProvider apiProvider;
 
@@ -33,6 +42,48 @@ class CompanyProvider with ChangeNotifier {
   List<CompanyPost> get globalPosts => _globalPosts;
   bool get isLoadingGlobalPosts => _isLoadingGlobalPosts;
   bool get hasMoreGlobalPosts => _hasMoreGlobalPosts;
+
+  List<dynamic> _extractResults(dynamic data) {
+    if (data is List) return data;
+    if (data is Map<String, dynamic>) {
+      final results = data['results'];
+      if (results is List) return results;
+    }
+    if (data is Map) {
+      final results = data['results'];
+      if (results is List) return results;
+    }
+    return [];
+  }
+
+  FormData _buildCompanyPostFormData(Map<String, dynamic> data) {
+    final formData = FormData();
+
+    data.forEach((key, value) {
+      if (value == null) return;
+
+      if ((key == 'uploaded_files' || key == 'uploaded_files[]') &&
+          value is List) {
+        for (final item in value) {
+          if (item is MultipartFile) {
+            formData.files.add(MapEntry('uploaded_files', item));
+          }
+        }
+        return;
+      }
+
+      if (value is List) {
+        for (final item in value) {
+          formData.fields.add(MapEntry(key, item.toString()));
+        }
+        return;
+      }
+
+      formData.fields.add(MapEntry(key, value.toString()));
+    });
+
+    return formData;
+  }
 
   // COMPANY ENDPOINTS
   Future<Company?> createCompany(Map<String, dynamic> data) async {
@@ -158,9 +209,12 @@ class CompanyProvider with ChangeNotifier {
   }
 
   // COMPANY POST ENDPOINTS
-  Future<CompanyPost?> createCompanyPost(String companyId, Map<String, dynamic> data) async {
+  Future<CompanyPost?> createCompanyPost(
+    String companyId,
+    Map<String, dynamic> data,
+  ) async {
     try {
-      FormData formData = FormData.fromMap(data);
+      final formData = _buildCompanyPostFormData(data);
       final response = await _dio.post(
         "/api/v1/companies/$companyId/posts/create/",
         data: formData,
@@ -170,8 +224,12 @@ class CompanyProvider with ChangeNotifier {
       );
 
       if (response.statusCode == 201 || response.statusCode == 200) {
-        if (response.data is Map && response.data.containsKey('payment_required')) {
-           throw Exception("Payment required: \${response.data['price']}");
+        if (response.data is Map &&
+            response.data['payment_required'] == true) {
+          throw CompanyPostPaymentRequiredException(
+            price:
+                double.tryParse(response.data['price']?.toString() ?? '0') ?? 0,
+          );
         }
         debugPrint("Company post created: ${response.data}");
         CompanyPost newPost = CompanyPost.fromJson(response.data);
@@ -191,7 +249,7 @@ class CompanyProvider with ChangeNotifier {
       final response = await _dio.get("/api/v1/companies/$companyId/posts/");
       debugPrint("Company posts: ${response.data}");
       if (response.statusCode == 200) {
-        final List<dynamic> results = response.data['results'] ?? [];
+        final List<dynamic> results = _extractResults(response.data);
         return results.map((json) => CompanyPost.fromJson(json)).toList();
       }
     } catch (e) {
@@ -220,7 +278,7 @@ class CompanyProvider with ChangeNotifier {
 
       final response = await _dio.get(url);
       if (response.statusCode == 200) {
-        final List<dynamic> results = response.data['results'] ?? [];
+        final List<dynamic> results = _extractResults(response.data);
         final newPosts = results.map((json) => CompanyPost.fromJson(json)).toList();
 
         if (forceRefresh) {
@@ -229,7 +287,9 @@ class CompanyProvider with ChangeNotifier {
           _globalPosts.addAll(newPosts);
         }
 
-        _nextGlobalPostsCursor = response.data['next'];
+        _nextGlobalPostsCursor = response.data is Map<String, dynamic>
+            ? response.data['next'] as String?
+            : null;
         _hasMoreGlobalPosts = _nextGlobalPostsCursor != null;
       }
     } catch (e) {
@@ -242,7 +302,7 @@ class CompanyProvider with ChangeNotifier {
 
   Future<CompanyPost?> updateCompanyPost(String postId, Map<String, dynamic> data) async {
     try {
-      FormData formData = FormData.fromMap(data);
+      final formData = _buildCompanyPostFormData(data);
       final response = await _dio.patch(
         "/api/v1/companies/posts/$postId/update/",
         data: formData,

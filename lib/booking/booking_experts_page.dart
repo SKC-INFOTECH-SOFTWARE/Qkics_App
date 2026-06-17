@@ -101,13 +101,13 @@ class _ExpertHorizontalCard extends StatelessWidget {
     return Material(
       color: cs.surface,
       elevation: 6, // ⬅️ STRONGER ELEVATION
-      shadowColor: cs.primary.withOpacity(0.18),
+      shadowColor: cs.primary.withValues(alpha: 0.18),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: cs.primary.withOpacity(0.25), // ⬅️ COLORED BORDER
+            color: cs.primary.withValues(alpha: 0.25), // ⬅️ COLORED BORDER
             width: 1,
           ),
         ),
@@ -225,7 +225,7 @@ class _ExpertHorizontalCard extends StatelessWidget {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: cs.primary.withOpacity(0.1),
+                    color: cs.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -268,7 +268,7 @@ class _Avatar extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(
-          color: cs.primary.withOpacity(0.2),
+          color: cs.primary.withValues(alpha: 0.2),
         ),
       ),
       child: ClipOval(
@@ -295,7 +295,7 @@ class _Fallback extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
 
     return Container(
-      color: cs.primary.withOpacity(0.1),
+      color: cs.primary.withValues(alpha: 0.1),
       alignment: Alignment.center,
       child: Text(
         name.isNotEmpty ? name[0].toUpperCase() : "?",

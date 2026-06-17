@@ -67,8 +67,8 @@ class _AuthorizedProfilesPageState extends State<AuthorizedProfilesPage>
                 controller: _tabController,
                 indicatorColor: theme.colorScheme.primary,
                 labelColor: theme.colorScheme.primary,
-                unselectedLabelColor: theme.colorScheme.onSurface.withOpacity(
-                  0.6,
+                unselectedLabelColor: theme.colorScheme.onSurface.withValues(
+                  alpha: 0.6,
                 ),
                 labelStyle: TextStyle(
                   fontWeight: FontWeight.bold,
@@ -203,7 +203,7 @@ class _EmptyState extends StatelessWidget {
           Icon(
             Icons.search_off,
             size: isTablet ? 96 : 64,
-            color: Colors.grey.withOpacity(0.5),
+            color: Colors.grey.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 24),
           Text(
@@ -418,13 +418,13 @@ class _BaseHorizontalCard extends StatelessWidget {
     return Material(
       color: cs.surface,
       elevation: isTablet ? 6 : 3, // 🔥 stronger elevation
-      shadowColor: cs.primary.withOpacity(0.18),
+      shadowColor: cs.primary.withValues(alpha: 0.18),
       borderRadius: BorderRadius.circular(20),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: cs.primary.withOpacity(0.22), // 🎨 colored border
+            color: cs.primary.withValues(alpha: 0.22), // 🎨 colored border
             width: 1,
           ),
         ),
@@ -539,7 +539,7 @@ class _PriceChip extends StatelessWidget {
         vertical: small ? (isTablet ? 6 : 5) : (isTablet ? 8 : 7),
       ),
       decoration: BoxDecoration(
-        color: cs.primary.withOpacity(0.1),
+        color: cs.primary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
@@ -570,7 +570,7 @@ class _TagChip extends StatelessWidget {
         vertical: isTablet ? 8 : 6,
       ),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
@@ -610,7 +610,7 @@ class _Avatar extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.18),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.18),
           width: isTablet ? 2.5 : 1.5,
         ),
       ),
@@ -641,7 +641,7 @@ class _AvatarFallback extends StatelessWidget {
     final isTablet = MediaQuery.of(context).size.width >= 600;
 
     return Container(
-      color: Theme.of(context).colorScheme.primary.withOpacity(0.14),
+      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.14),
       alignment: Alignment.center,
       child: Text(
         name.isNotEmpty ? name[0].toUpperCase() : "?",
