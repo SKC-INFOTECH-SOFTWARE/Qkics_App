@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:q_kics/booking/expert_slots_page.dart';
 import 'package:q_kics/booking/models/expert_model.dart';
+import 'package:q_kics/profile/ui/widgets/public/public_profile_page.dart';
 import 'package:q_kics/providers/booking_provider.dart';
 
 class BookingExpertsPage extends StatefulWidget {
@@ -26,7 +27,7 @@ class _BookingExpertsPageState extends State<BookingExpertsPage> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.background,
+      backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
         title: const Text(
           "Book an Expert",
@@ -93,6 +94,25 @@ class _ExpertHorizontalCard extends StatelessWidget {
 
   const _ExpertHorizontalCard({required this.expert});
 
+  void _openPublicProfile(BuildContext context) {
+    if (expert.username.trim().isEmpty) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PublicProfilePage(username: expert.username),
+      ),
+    );
+  }
+
+  void _openSlotsPage(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ExpertSlotsPage(expertUuid: expert.expertUuid),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -111,27 +131,15 @@ class _ExpertHorizontalCard extends StatelessWidget {
             width: 1,
           ),
         ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: expert.isAvailable
-              ? () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          ExpertSlotsPage(
-                            expertUuid: expert.expertUuid,
-                          ),
-                    ),
-                  );
-                }
-              : null,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                /// Avatar + availability
-                Stack(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              /// Avatar + availability
+              InkWell(
+                customBorder: const CircleBorder(),
+                onTap: () => _openPublicProfile(context),
+                child: Stack(
                   children: [
                     _Avatar(
                       imageUrl: expert.profilePicture,
@@ -157,88 +165,100 @@ class _ExpertHorizontalCard extends StatelessWidget {
                       ),
                   ],
                 ),
+              ),
 
-                const SizedBox(width: 12),
+              const SizedBox(width: 12),
 
-                /// Info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              expert.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
+              /// Info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
+                      onTap: () => _openPublicProfile(context),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                expert.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                ),
                               ),
+                            ),
+                            const SizedBox(width: 10),
+                            SizedBox(
+                              height: 34,
+                              child: ElevatedButton(
+                                onPressed: expert.isAvailable
+                                    ? () => _openSlotsPage(context)
+                                    : null,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: cs.primary,
+                                  disabledBackgroundColor:
+                                      cs.surfaceContainerHighest,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                  ),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                child: Text(
+                                  expert.isAvailable ? "Book" : "Unavailable",
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                   
+                    Text(
+                      expert.primaryExpertise,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: cs.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            expert.headline,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontSize: 12,
+                              height: 1.25,
+                              color: theme.hintColor,
                             ),
                           ),
-                          if (expert.verified)
-                            const Padding(
-                              padding: EdgeInsets.only(left: 4),
-                              child: Icon(
-                                Icons.verified,
-                                size: 14,
-                                color: Color(0xFFE53935),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        expert.primaryExpertise,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: cs.primary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        expert.headline,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontSize: 12,
-                          height: 1.25,
-                          color: theme.hintColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(width: 10),
-
-                /// Price
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: cs.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    "₹${expert.hourlyRate.round()}/hr",
-                    style: TextStyle(
-                      color: cs.primary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 11,
+                      ],
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

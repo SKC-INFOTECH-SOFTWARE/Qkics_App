@@ -1,5 +1,6 @@
 class ExpertModel {
   final String expertUuid; // 🔑 THIS is used for booking
+  final String username;
   final String name;
   final String headline;
   final String primaryExpertise;
@@ -10,6 +11,7 @@ class ExpertModel {
 
   ExpertModel({
     required this.expertUuid,
+    required this.username,
     required this.name,
     required this.headline,
     required this.primaryExpertise,
@@ -24,6 +26,7 @@ class ExpertModel {
 
     return ExpertModel(
       expertUuid: json['user']['uuid'],
+      username: user['username'] ?? '',
       name: "${json['first_name']} ${json['last_name']}",
       headline: json['headline'] ?? '',
       primaryExpertise: json['primary_expertise'] ?? '',

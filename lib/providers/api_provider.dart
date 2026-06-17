@@ -1442,8 +1442,19 @@ class ApiProvider with ChangeNotifier {
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data;
-        _searchResults = data
+        final responseData = response.data;
+        final List<dynamic> results;
+
+        if (responseData is List) {
+          results = responseData;
+        } else if (responseData is Map<String, dynamic>) {
+          final rawResults = responseData['results'];
+          results = rawResults is List ? rawResults : const [];
+        } else {
+          results = const [];
+        }
+
+        _searchResults = results
             .map((json) => Post.fromJson(json as Map<String, dynamic>))
             .toList();
         notifyListeners();
