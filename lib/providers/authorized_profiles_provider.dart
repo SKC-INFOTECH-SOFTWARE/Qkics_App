@@ -24,16 +24,16 @@ class AuthorizedProfilesProvider extends ChangeNotifier {
   bool isLoading = false;
   String? error;
 
-  Future<void> fetchAll() async {
+  Future<void> fetchAll({String? search}) async {
     isLoading = true;
     error = null;
     notifyListeners();
 
     try {
       final results = await Future.wait([
-        expertApi.getAllExperts(),
-        entrepreneurApi.getAllEntrepreneurs(),
-        investorApi.getAllInvestors(),
+        expertApi.getAllExperts(search: search),
+        entrepreneurApi.getAllEntrepreneurs(search: search),
+        investorApi.getAllInvestors(search: search),
       ]);
 
       experts = results[0] as List<ExpertProfile>;
@@ -47,11 +47,11 @@ class AuthorizedProfilesProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchExperts() async {
+  Future<void> fetchExperts({String? search}) async {
     isLoading = true;
     notifyListeners();
     try {
-      experts = await expertApi.getAllExperts();
+      experts = await expertApi.getAllExperts(search: search);
     } catch (e) {
       error = e.toString();
     } finally {
@@ -60,11 +60,11 @@ class AuthorizedProfilesProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchEntrepreneurs() async {
+  Future<void> fetchEntrepreneurs({String? search}) async {
     isLoading = true;
     notifyListeners();
     try {
-      entrepreneurs = await entrepreneurApi.getAllEntrepreneurs();
+      entrepreneurs = await entrepreneurApi.getAllEntrepreneurs(search: search);
     } catch (e) {
       error = e.toString();
     } finally {
@@ -73,11 +73,11 @@ class AuthorizedProfilesProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchInvestors() async {
+  Future<void> fetchInvestors({String? search}) async {
     isLoading = true;
     notifyListeners();
     try {
-      investors = await investorApi.getAllInvestors();
+      investors = await investorApi.getAllInvestors(search: search);
     } catch (e) {
       error = e.toString();
     } finally {

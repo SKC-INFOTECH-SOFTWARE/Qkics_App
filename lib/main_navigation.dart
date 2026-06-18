@@ -75,13 +75,19 @@ class _MainNavigationState extends State<MainNavigation> {
         onBarsVisibilityChanged: _onBarsVisibilityChanged,
       ),
       const SearchPage(),
-      const CreatePostPage(),
-      const CompaniesPage(),
-      const NotificationsPage(),
+      CreatePostPage(onBarsVisibilityChanged: _onBarsVisibilityChanged),
+      CompaniesPage(onBarsVisibilityChanged: _onBarsVisibilityChanged),
+      NotificationsPage(onBarsVisibilityChanged: _onBarsVisibilityChanged),
       ProfileRoute(onBarsVisibilityChanged: _onBarsVisibilityChanged),
     ];
 
-    return Stack(
+    return PopScope(
+      // Allow the system to pop (exit) only when already on the home tab.
+      canPop: nav.index == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) nav.setIndex(0);
+      },
+      child: Stack(
       children: [
       Scaffold(
       extendBody: true,
@@ -212,7 +218,8 @@ class _MainNavigationState extends State<MainNavigation> {
     ), // end Scaffold
       const _InCallBanner(),
     ], // end Stack children
-    ); // end Stack
+    ), // end Stack
+    ); // end PopScope
   }
 }
 

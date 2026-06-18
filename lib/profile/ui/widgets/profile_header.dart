@@ -1,4 +1,5 @@
 // profile_header.dart
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -78,17 +79,33 @@ class ProfileHeader extends StatelessWidget {
         ((expertProvider?.isPending ?? false) ||
             (entrepreneurProvider?.isPending ?? false));
 
+    final bool isRejected =
+        !isPublicView &&
+        ((expertProvider?.isRejected ?? false) ||
+            (entrepreneurProvider?.isRejected ?? false));
+
+    // Admin's rejection reason (expert carries the note).
+    final String? rejectionReason =
+        !isPublicView ? expertProvider?.rejectionReason : null;
+
+    // Whether the effective sub-profile is admin-approved.
+    // Investors have no review flow, so existence == approved.
+    final bool isApproved =
+        !isPublicView &&
+        (effectiveType == ProfileType.investor ||
+            (effectiveType == ProfileType.expert &&
+                (expertProvider?.isApproved ?? false)) ||
+            (effectiveType == ProfileType.entrepreneur &&
+                (entrepreneurProvider?.isApproved ?? false)));
+
     // ======================================================
     // PROFILE IMAGE
     // ======================================================
     final hasImage =
         profile.profilePicture != null && profile.profilePicture!.isNotEmpty;
 
-    final String displayImageUrl = hasImage
-        ? isPublicView
-              ? profile.profilePicture!
-              : '${profile.profilePicture}?t=${profile.hashCode}'
-        : '';
+    final String displayImageUrl =
+        hasImage ? profile.profilePicture! : '';
 
     return Container(
       decoration: BoxDecoration(
@@ -150,7 +167,7 @@ class ProfileHeader extends StatelessWidget {
                         radius: 42,
                         backgroundColor: colorScheme.primaryContainer,
                         backgroundImage: hasImage
-                            ? NetworkImage(displayImageUrl)
+                            ? CachedNetworkImageProvider(displayImageUrl)
                             : null,
                         child: !hasImage
                             ? Text(
@@ -219,7 +236,8 @@ class ProfileHeader extends StatelessWidget {
                               ),
                             ),
                           ),
-                          if (effectiveType != ProfileType.normal) ...[
+                          if (effectiveType != ProfileType.normal &&
+                              isApproved) ...[
                             const SizedBox(width: 8),
                             _userTypeBadge(theme, effectiveType),
                           ],
@@ -243,8 +261,15 @@ class ProfileHeader extends StatelessWidget {
                 effectiveType,
                 hasDraft,
                 isPending,
+                isApproved,
                 colorScheme,
               ),
+
+            // ================= REJECTED (reason + resubmit) =================
+            if (!isPublicView && isRejected) ...[
+              const SizedBox(height: 16),
+              _rejectedCard(context, effectiveType, theme, rejectionReason),
+            ],
 
             if (isPublicView &&
                 (effectiveType == ProfileType.expert ||
@@ -287,6 +312,7 @@ class ProfileHeader extends StatelessWidget {
     ProfileType type,
     bool hasDraft,
     bool isPending,
+    bool isApproved,
     ColorScheme colorScheme,
   ) {
     return Row(
@@ -312,7 +338,9 @@ class ProfileHeader extends StatelessWidget {
             ),
           ),
 
-        if (type == ProfileType.expert || type == ProfileType.investor) ...[
+        // Slots are only available once the application is approved.
+        if (isApproved &&
+            (type == ProfileType.expert || type == ProfileType.investor)) ...[
           const SizedBox(width: 12),
           Expanded(
             child: SizedBox(
@@ -395,6 +423,85 @@ class ProfileHeader extends StatelessWidget {
     }
     if (hasDraft) return Icons.save_as_outlined;
     return Icons.edit_note_outlined;
+  }
+
+  Widget _rejectedCard(
+    BuildContext context,
+    ProfileType type,
+    ThemeData theme,
+    String? reason,
+  ) {
+    final hasReason = reason != null && reason.trim().isNotEmpty;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.red.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.cancel_outlined, size: 20, color: Colors.red),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Application Rejected',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red[800],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            hasReason
+                ? reason
+                : 'Your application was not approved. Please review your details and submit again.',
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.4,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: FilledButton.icon(
+              onPressed: () => _resubmit(context, type),
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text("Resubmit for Review"),
+              style: FilledButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _resubmit(BuildContext context, ProfileType type) async {
+    final messenger = ScaffoldMessenger.of(context);
+    if (type == ProfileType.expert) {
+      await context.read<ExpertProfileProvider>().submitForExpertReview();
+    } else if (type == ProfileType.entrepreneur) {
+      await context
+          .read<EntrepreneurProfileProvider>()
+          .submitForEntrepreneurReview();
+    } else {
+      return;
+    }
+    messenger.showSnackBar(
+      const SnackBar(content: Text("Submitted for review")),
+    );
   }
 
   Widget _pendingBadge(ThemeData theme) {

@@ -34,6 +34,9 @@ class EntrepreneurProfileProvider extends ChangeNotifier {
 
   bool get isApproved =>
       profile != null && profile!.applicationStatus == 'approved';
+
+  bool get isRejected =>
+      profile != null && profile!.applicationStatus == 'rejected';
   // ============================================================
   // LOAD PROFILE
   // ============================================================

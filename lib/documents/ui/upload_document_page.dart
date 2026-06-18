@@ -16,7 +16,6 @@ class _UploadDocumentPageState extends State<UploadDocumentPage> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  String _accessType = 'FREE';
   File? _selectedFile;
   bool _isUploading = false;
 
@@ -157,7 +156,7 @@ class _UploadDocumentPageState extends State<UploadDocumentPage> {
         decoration: BoxDecoration(
           color: _selectedFile != null
               ? theme.colorScheme.primary.withValues(alpha: 0.05)
-              : theme.colorScheme.surfaceVariant.withValues(alpha: 0.3),
+              : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
             color: _selectedFile != null
@@ -281,37 +280,6 @@ class _UploadDocumentPageState extends State<UploadDocumentPage> {
     );
   }
 
-  Widget _buildAccessSelector(ThemeData theme) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
-      child: Row(
-        children: [
-          _SelectableChip(
-            label: "Free",
-            icon: Icons.lock_open_rounded,
-            isSelected: _accessType == 'FREE',
-            onTap: () => setState(() => _accessType = 'FREE'),
-          ),
-          const SizedBox(width: 12),
-          _SelectableChip(
-            label: "Premium",
-            icon: Icons.star_rounded,
-            isSelected: _accessType == 'PREMIUM',
-            onTap: () => setState(() => _accessType = 'PREMIUM'),
-          ),
-          const SizedBox(width: 12),
-          _SelectableChip(
-            label: "Paid",
-            icon: Icons.payments_rounded,
-            isSelected: _accessType == 'PAID',
-            onTap: () => setState(() => _accessType = 'PAID'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildUploadButton(ThemeData theme) {
     return Container(
       width: double.infinity,
@@ -353,74 +321,6 @@ class _UploadDocumentPageState extends State<UploadDocumentPage> {
                   letterSpacing: 0.5,
                 ),
               ),
-      ),
-    );
-  }
-}
-
-class _SelectableChip extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _SelectableChip({
-    required this.label,
-    required this.icon,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? theme.colorScheme.primary
-              : theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected
-                ? Colors.transparent
-                : theme.colorScheme.outlineVariant,
-            width: 1.5,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : [],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 20,
-              color: isSelected
-                  ? Colors.white
-                  : theme.colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                color: isSelected ? Colors.white : theme.colorScheme.onSurface,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

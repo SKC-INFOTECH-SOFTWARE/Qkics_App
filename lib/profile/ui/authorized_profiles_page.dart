@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:q_kics/providers/authorized_profiles_provider.dart';
@@ -20,23 +21,68 @@ class _AuthorizedProfilesPageState extends State<AuthorizedProfilesPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
+  // ── Search state ──────────────────────────────────────────
+  bool _searchActive = false;
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
+  Timer? _debounce;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    if (widget.onlyInvestors) {
-      _tabController.index = 2;
-    }
+    if (widget.onlyInvestors) _tabController.index = 2;
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
+    _searchFocus.dispose();
+    _debounce?.cancel();
     super.dispose();
   }
 
+  void _onSearchChanged(String query) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () => _runSearch(query));
+  }
+
+  void _runSearch(String query) {
+    final provider = context.read<AuthorizedProfilesProvider>();
+    final q = query.trim().isEmpty ? null : query.trim();
+    if (widget.onlyInvestors) {
+      provider.fetchInvestors(search: q);
+      return;
+    }
+    // Search only the active tab to avoid 3 parallel heavy requests
+    switch (_tabController.index) {
+      case 0:
+        provider.fetchExperts(search: q);
+      case 1:
+        provider.fetchEntrepreneurs(search: q);
+      case 2:
+        provider.fetchInvestors(search: q);
+    }
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    _searchFocus.unfocus();
+    setState(() => _searchActive = false);
+    // Reload full list
+    final provider = context.read<AuthorizedProfilesProvider>();
+    if (widget.onlyInvestors) {
+      provider.fetchInvestors();
+    } else {
+      provider.fetchAll();
+    }
+  }
+
   void _openPublicProfile(String username) {
-    if (username.isEmpty) return;
+    if (username.isEmpty) {
+      return;
+    }
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => PublicProfilePage(username: username)),
@@ -53,18 +99,53 @@ class _AuthorizedProfilesPageState extends State<AuthorizedProfilesPage>
       appBar: AppBar(
         elevation: 0,
         backgroundColor: theme.colorScheme.surface,
-        title: Text(
-          widget.onlyInvestors ? "Investor Linkup" : "Authorized Profiles",
-          style: TextStyle(
-            color: theme.colorScheme.onSurface,
-            fontWeight: FontWeight.bold,
-            fontSize: MediaQuery.of(context).size.width >= 600 ? 24 : 20,
-          ),
-        ),
+        title: _searchActive
+            ? TextField(
+                controller: _searchController,
+                focusNode: _searchFocus,
+                autofocus: true,
+                onChanged: _onSearchChanged,
+                decoration: InputDecoration(
+                  hintText: 'Search…',
+                  border: InputBorder.none,
+                  hintStyle: TextStyle(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
+                ),
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface,
+                  fontSize: MediaQuery.of(context).size.width >= 600 ? 20 : 16,
+                ),
+              )
+            : Text(
+                widget.onlyInvestors ? "Investor Linkup" : "Authorized Profiles",
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.bold,
+                  fontSize: MediaQuery.of(context).size.width >= 600 ? 24 : 20,
+                ),
+              ),
+        actions: [
+          _searchActive
+              ? IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: _clearSearch,
+                )
+              : IconButton(
+                  icon: const Icon(Icons.search),
+                  onPressed: () => setState(() => _searchActive = true),
+                ),
+        ],
         bottom: widget.onlyInvestors
             ? null
             : TabBar(
                 controller: _tabController,
+                onTap: (_) {
+                  // Re-run search when switching tabs so results match
+                  if (_searchActive && _searchController.text.isNotEmpty) {
+                    _runSearch(_searchController.text);
+                  }
+                },
                 indicatorColor: theme.colorScheme.primary,
                 labelColor: theme.colorScheme.primary,
                 unselectedLabelColor: theme.colorScheme.onSurface.withValues(
@@ -110,8 +191,9 @@ class _AuthorizedProfilesPageState extends State<AuthorizedProfilesPage>
   }
 
   Widget _buildEntrepreneurList(List<EntrepreneurProfile> list) {
-    if (list.isEmpty)
+    if (list.isEmpty) {
       return const _EmptyState(message: "No entrepreneurs found");
+    }
     return _buildResponsiveList(
       itemCount: list.length,
       itemBuilder: (context, i) => _EntrepreneurHorizontalCard(

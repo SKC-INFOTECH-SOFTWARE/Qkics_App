@@ -32,21 +32,18 @@ class _HomePageState extends State<HomePage> {
   late final ScrollController _scrollController;
 
   bool _isAppBarVisible = true;
-  double _previousPixels = 0.0;
-  static const double _velocityThreshold =
-      50; // Adjust for sensitivity (higher = needs faster scroll to hide)
 
   @override
   void initState() {
     super.initState();
     _scrollController = widget.scrollController ?? ScrollController();
     _loadInitialData();
-
     _scrollController.addListener(_scrollListener);
   }
 
+  // Only used for infinite-scroll pagination now.
+  // Hide/show is handled by UserScrollNotification in _buildFeed.
   void _scrollListener() {
-    // Load more posts (infinite scroll)
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
       final api = Provider.of<ApiProvider>(context, listen: false);
@@ -54,38 +51,26 @@ class _HomePageState extends State<HomePage> {
         api.fetchPosts();
       }
     }
+  }
 
-    // Instagram-like smart hide/show based on scroll velocity
-    final currentPixels = _scrollController.position.pixels;
-    final delta = currentPixels - _previousPixels;
-    final velocity = delta.abs() * 10; // Multiply to make it more responsive
+  void _onUserScroll(UserScrollNotification notification) {
+    final pixels = _scrollController.hasClients
+        ? _scrollController.position.pixels
+        : 0.0;
 
-    bool shouldHide = false;
-    bool shouldShow = false;
-
-    if (velocity > _velocityThreshold) {
-      if (delta > 0) {
-        // Fast scrolling down → hide
-        shouldHide = true;
-      } else if (delta < 0) {
-        // Fast scrolling up → show
-        shouldShow = true;
+    if (notification.direction == ScrollDirection.reverse && pixels > 80) {
+      // Scrolling down and not near the top → hide
+      if (_isAppBarVisible) {
+        setState(() => _isAppBarVisible = false);
+        widget.onBarsVisibilityChanged?.call(false);
+      }
+    } else if (notification.direction == ScrollDirection.forward) {
+      // Scrolling up → show
+      if (!_isAppBarVisible) {
+        setState(() => _isAppBarVisible = true);
+        widget.onBarsVisibilityChanged?.call(true);
       }
     }
-
-    if (shouldHide && _isAppBarVisible) {
-      setState(() {
-        _isAppBarVisible = false;
-      });
-      widget.onBarsVisibilityChanged?.call(false);
-    } else if (shouldShow && !_isAppBarVisible) {
-      setState(() {
-        _isAppBarVisible = true;
-      });
-      widget.onBarsVisibilityChanged?.call(true);
-    }
-
-    _previousPixels = currentPixels;
   }
 
   Future<void> _loadInitialData() async {
@@ -256,7 +241,12 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildFeed(ApiProvider api, ColorScheme colorScheme, User? user) {
     final posts = api.posts;
-    return RefreshIndicator(
+    return NotificationListener<UserScrollNotification>(
+      onNotification: (n) {
+        _onUserScroll(n);
+        return false; // let the notification keep bubbling
+      },
+      child: RefreshIndicator(
       onRefresh: _onRefresh,
       color: colorScheme.primary,
       backgroundColor: Colors.white,
@@ -264,8 +254,10 @@ class _HomePageState extends State<HomePage> {
       displacement: 40,
       child: CustomScrollView(
         controller: _scrollController,
-        physics: const AlwaysScrollableScrollPhysics(),
-        cacheExtent: 1000, // Pre-renders posts for smoother scrolling
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
+        cacheExtent: 2500,
         slivers: [
           // ================= APPBAR (Pinned Time Portion) =================
           SliverAppBar(
@@ -377,6 +369,6 @@ class _HomePageState extends State<HomePage> {
             ),
         ],
       ),
-    );
+    ));
   }
 }

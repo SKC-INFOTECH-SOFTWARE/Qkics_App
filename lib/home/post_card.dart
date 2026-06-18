@@ -8,6 +8,7 @@ import 'package:timeago/timeago.dart' as timeago;
 import 'package:shimmer/shimmer.dart';
 
 import 'package:q_kics/providers/api_provider.dart';
+import 'package:q_kics/providers/navigation_provider.dart';
 import 'package:q_kics/models/post.dart';
 import 'package:q_kics/home/comment_sheet.dart';
 import 'package:q_kics/home/post_detail_page.dart';
@@ -26,7 +27,9 @@ class PostCard extends StatefulWidget {
 }
 
 class _PostCardState extends State<PostCard>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
   // Videos → 4:5 portrait (Instagram's default feed video ratio).
   // Images → ratio detected from actual image dimensions after upload.
   static const double _kVideoAspectRatio = 4.0 / 5.0;
@@ -121,10 +124,17 @@ class _PostCardState extends State<PostCard>
     });
   }
 
-  void _openPublicProfile(String username) {
+  void _openAuthorProfile() {
+    // Own post → switch to the self profile tab instead of public view.
+    if (widget.post.author.id == widget.currentUserId) {
+      context.read<NavigationProvider>().goProfile();
+      return;
+    }
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => PublicProfilePage(username: username)),
+      MaterialPageRoute(
+        builder: (_) => PublicProfilePage(username: widget.post.author.username),
+      ),
     );
   }
 
@@ -193,6 +203,7 @@ class _PostCardState extends State<PostCard>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // required by AutomaticKeepAliveClientMixin
     final post = widget.post;
     final colorScheme = Theme.of(context).colorScheme;
     final hasTitle = post.title?.trim().isNotEmpty ?? false;
@@ -204,7 +215,8 @@ class _PostCardState extends State<PostCard>
     final isTablet = width >= 600;
     final double scale = isTablet ? 1.4 : 1.0;
 
-    return Card(
+    return RepaintBoundary(
+      child: Card(
       margin: const EdgeInsets.only(bottom: 10),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       elevation: 3,
@@ -218,7 +230,7 @@ class _PostCardState extends State<PostCard>
             child: Row(
               children: [
                 GestureDetector(
-                  onTap: () => _openPublicProfile(post.author.username),
+                  onTap: _openAuthorProfile,
                   child: _buildAvatar(
                     post.author.profileImage,
                     post.author.username,
@@ -228,7 +240,7 @@ class _PostCardState extends State<PostCard>
                 const SizedBox(width: 12),
                 Expanded(
                   child: InkWell(
-                    onTap: () => _openPublicProfile(post.author.username),
+                    onTap: _openAuthorProfile,
                     borderRadius: BorderRadius.circular(8),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -506,7 +518,7 @@ class _PostCardState extends State<PostCard>
           const SizedBox(height: 8),
         ],
       ),
-    );
+    ));
   }
 
   Widget _buildMedia(Post post, double scale, ApiProvider api) {
@@ -647,7 +659,7 @@ class _PostCardState extends State<PostCard>
                   // Blurred fill behind the video so the 1:1 box has no bars.
                   IgnorePointer(
                     child: ImageFiltered(
-                      imageFilter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                      imageFilter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
                       child: VideoPlayerWidget(
                         videoUrl: media.file,
                         fit: BoxFit.cover,
@@ -674,7 +686,7 @@ class _PostCardState extends State<PostCard>
                   // and gives the Instagram "soft edge" look.
                   IgnorePointer(
                     child: ImageFiltered(
-                      imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+                      imageFilter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
                       child: CachedNetworkImage(
                         imageUrl: media.file,
                         fit: BoxFit.cover,

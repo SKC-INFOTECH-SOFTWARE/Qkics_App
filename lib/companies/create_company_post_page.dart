@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:q_kics/providers/company_provider.dart';
+import 'package:q_kics/home/image_ratio_selector_sheet.dart';
 import 'package:dio/dio.dart';
 
 import 'package:q_kics/models/company_post.dart';
@@ -21,7 +22,6 @@ class CreateCompanyPostPage extends StatefulWidget {
 }
 
 class _CreateCompanyPostPageState extends State<CreateCompanyPostPage> {
-  final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
 
@@ -42,11 +42,35 @@ class _CreateCompanyPostPageState extends State<CreateCompanyPostPage> {
   }
 
   Future<void> _pickImages() async {
-    final pickedFiles = await ImagePicker().pickMultiImage(imageQuality: 80);
-    if (pickedFiles.isNotEmpty && mounted) {
-      setState(() {
-        _uploadedFiles.addAll(pickedFiles.map((pf) => File(pf.path)));
-      });
+    if (_uploadedFiles.length + _existingMedia.length >= 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Maximum 10 media files allowed")),
+      );
+      return;
+    }
+
+    final picked = await ImagePicker().pickMultiImage(
+      imageQuality: 90,
+      maxWidth: 1440,
+      maxHeight: 1440,
+    );
+    if (picked.isEmpty || !mounted) return;
+
+    final remaining = 10 - (_uploadedFiles.length + _existingMedia.length);
+    final files = picked.take(remaining).map((p) => File(p.path)).toList();
+
+    final croppedFiles = await showModalBottomSheet<List<File>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => SizedBox(
+        height: MediaQuery.of(context).size.height * 0.92,
+        child: ImageRatioSelectorSheet(images: files),
+      ),
+    );
+
+    if (croppedFiles != null && mounted) {
+      setState(() => _uploadedFiles.addAll(croppedFiles));
     }
   }
 
@@ -66,14 +90,21 @@ class _CreateCompanyPostPageState extends State<CreateCompanyPostPage> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    final title = _titleController.text.trim();
+    final content = _contentController.text.trim();
+    if (title.isEmpty || content.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Title and content are required")),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
     try {
       final Map<String, dynamic> data = {
-        'title': _titleController.text.trim(),
-        'content': _contentController.text.trim(),
+        'title': title,
+        'content': content,
       };
 
       final provider = context.read<CompanyProvider>();
@@ -118,11 +149,13 @@ class _CreateCompanyPostPageState extends State<CreateCompanyPostPage> {
         final message = switch (e) {
           CompanyPostPaymentRequiredException(:final price) =>
             'Free posts are finished. Payment required: ${price.toStringAsFixed(price.truncateToDouble() == price ? 0 : 2)}',
-          _ => 'Error: $e',
+          DioException(:final response) =>
+            _serverMessage(response?.data),
+          _ => 'Something went wrong. Please try again.',
         };
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
       }
     }
   }
@@ -138,6 +171,7 @@ class _CreateCompanyPostPageState extends State<CreateCompanyPostPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -145,48 +179,108 @@ class _CreateCompanyPostPageState extends State<CreateCompanyPostPage> {
         title: Text(isEditing ? 'Edit Company Post' : 'Create Company Post'),
         centerTitle: true,
         elevation: 0,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: TextButton(
+              onPressed: _isLoading ? null : _submit,
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(
+                      isEditing ? 'Update' : 'Post',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: colorScheme.primary,
+                      ),
+                    ),
+            ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildTextField(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Title field
+            Container(
+              decoration: BoxDecoration(
+                color: isDark ? Colors.grey[900] : Colors.grey[50],
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: TextField(
                 controller: _titleController,
-                label: 'Post Title',
-                icon: Icons.title,
-                validator: (val) =>
-                    val == null || val.isEmpty ? 'Title required' : null,
+                decoration: InputDecoration(
+                  hintText: 'Post title',
+                  hintStyle: TextStyle(color: Colors.grey[600]),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.all(16),
+                ),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 16),
+            ),
+            const SizedBox(height: 16),
 
-              _buildTextField(
-                controller: _contentController,
-                label: 'What do you want to share?',
-                icon: Icons.article_outlined,
-                maxLines: 8,
-                validator: (val) =>
-                    val == null || val.isEmpty ? 'Content required' : null,
+            // Content field
+            Container(
+              decoration: BoxDecoration(
+                color: isDark ? Colors.grey[900] : Colors.grey[50],
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey[300]!),
               ),
-              const SizedBox(height: 24),
+              child: TextField(
+                controller: _contentController,
+                minLines: 6,
+                maxLines: null,
+                decoration: InputDecoration(
+                  hintText: "What does your company want to share?",
+                  hintStyle: TextStyle(color: Colors.grey[600]),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.all(16),
+                ),
+                style: const TextStyle(fontSize: 16, height: 1.6),
+                textCapitalization: TextCapitalization.sentences,
+              ),
+            ),
+            const SizedBox(height: 20),
 
               if (_existingMedia.isNotEmpty || _uploadedFiles.isNotEmpty) ...[
-                SizedBox(
-                  height: 100,
+                Container(
+                  height: 140,
+                  margin: const EdgeInsets.only(bottom: 16),
                   child: ListView(
                     scrollDirection: Axis.horizontal,
                     children: [
-                      ..._existingMedia.map(_buildExistingMediaPreview),
-                      ..._uploadedFiles.asMap().entries.map(
-                        (entry) =>
-                            _buildPickedFilePreview(entry.key, entry.value),
-                      ),
+                      ..._existingMedia.asMap().entries.map((entry) =>
+                          _buildMediaCard(
+                            media: entry.value.file,
+                            isExisting: true,
+                            isVideo: entry.value.mediaType == 'video',
+                            onRemove: () => setState(
+                              () => _existingMedia.removeAt(entry.key),
+                            ),
+                          )),
+                      ..._uploadedFiles.asMap().entries.map((entry) =>
+                          _buildMediaCard(
+                            file: entry.value,
+                            isExisting: false,
+                            isVideo: _isVideoFile(entry.value.path),
+                            onRemove: () => setState(
+                              () => _uploadedFiles.removeAt(entry.key),
+                            ),
+                          )),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
               ],
 
               Row(
@@ -194,12 +288,14 @@ class _CreateCompanyPostPageState extends State<CreateCompanyPostPage> {
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: _pickImages,
-                      icon: const Icon(Icons.add_photo_alternate_outlined),
+                      icon: const Icon(Icons.photo_library_outlined),
                       label: const Text("Add Photos"),
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        foregroundColor: colorScheme.primary,
+                        side: BorderSide(color: colorScheme.primary, width: 2),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(16),
                         ),
                       ),
                     ),
@@ -211,176 +307,92 @@ class _CreateCompanyPostPageState extends State<CreateCompanyPostPage> {
                       icon: const Icon(Icons.video_library_outlined),
                       label: const Text("Add Video"),
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        foregroundColor: colorScheme.primary,
+                        side: BorderSide(color: colorScheme.primary, width: 2),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(16),
                         ),
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 40),
-
-              ElevatedButton(
-                onPressed: _isLoading ? null : _submit,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  backgroundColor: colorScheme.primary,
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : Text(
-                        isEditing ? 'Update Post' : 'Publish Post',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-              ),
+              const SizedBox(height: 80),
             ],
           ),
         ),
-      ),
     );
   }
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    int maxLines = 1,
-    String? Function(String?)? validator,
+  String _serverMessage(dynamic data) {
+    if (data is Map) {
+      // DRF puts the top-level message in 'detail', 'error', or 'message'
+      for (final key in ['detail', 'error', 'message']) {
+        if (data[key] != null) return data[key].toString();
+      }
+      // Field-level errors: join the first list of messages found
+      for (final value in data.values) {
+        if (value is List && value.isNotEmpty) return value.first.toString();
+        if (value is String && value.isNotEmpty) return value;
+      }
+    }
+    if (data is String && data.isNotEmpty) return data;
+    return 'Something went wrong. Please try again.';
+  }
+
+  Widget _buildMediaCard({
+    File? file,
+    String? media,
+    required bool isExisting,
+    required bool isVideo,
+    required VoidCallback onRemove,
   }) {
-    final theme = Theme.of(context);
-    return TextFormField(
-      controller: controller,
-      maxLines: maxLines,
-      validator: validator,
-      decoration: InputDecoration(
-        labelText: maxLines == 1 ? label : null,
-        hintText: maxLines > 1 ? label : null,
-        prefixIcon: maxLines == 1
-            ? Icon(icon, color: theme.colorScheme.primary)
-            : null,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
-        ),
-        filled: true,
-        fillColor: theme.colorScheme.surface,
+    return Container(
+      width: 120,
+      margin: const EdgeInsets.only(right: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: Colors.black,
       ),
-    );
-  }
-
-  Widget _buildExistingMediaPreview(PostMedia media) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: SizedBox(
-          width: 100,
-          height: 100,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              media.isVideo
-                  ? Container(
-                      color: Colors.black87,
-                      child: const Icon(
-                        Icons.videocam,
-                        color: Colors.white,
-                        size: 32,
-                      ),
-                    )
-                  : CachedNetworkImage(
-                      imageUrl: media.file,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => Container(
-                        color: Colors.grey.shade200,
-                        child: const Icon(Icons.broken_image_outlined),
-                      ),
-                    ),
-              if (media.isVideo)
-                const Center(
-                  child: Icon(
-                    Icons.play_circle_fill,
-                    color: Colors.white70,
-                    size: 28,
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPickedFilePreview(int index, File file) {
-    final isVideo = _isVideoFile(file.path);
-    return Padding(
-      padding: const EdgeInsets.only(right: 8.0),
       child: Stack(
-        clipBehavior: Clip.none,
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: SizedBox(
-              width: 100,
-              height: 100,
-              child: isVideo
-                  ? Container(
-                      color: Colors.black87,
-                      child: const Icon(
-                        Icons.videocam,
-                        color: Colors.white,
-                        size: 32,
-                      ),
-                    )
-                  : Image.file(file, fit: BoxFit.cover),
-            ),
+            borderRadius: BorderRadius.circular(16),
+            child: isExisting
+                ? CachedNetworkImage(
+                    imageUrl: media!,
+                    width: 120,
+                    height: 140,
+                    fit: BoxFit.cover,
+                    errorWidget: (_, __, ___) => const Icon(Icons.error),
+                  )
+                : isVideo
+                ? const SizedBox(
+                    width: 120,
+                    height: 140,
+                    child: Center(
+                      child: Icon(Icons.videocam, color: Colors.white, size: 40),
+                    ),
+                  )
+                : Image.file(file!, width: 120, height: 140, fit: BoxFit.cover),
           ),
           if (isVideo)
-            const Positioned.fill(
-              child: Center(
-                child: Icon(
-                  Icons.play_circle_fill,
-                  color: Colors.white70,
-                  size: 28,
-                ),
-              ),
+            const Center(
+              child: Icon(Icons.play_circle_fill, color: Colors.white70, size: 32),
             ),
           Positioned(
-            top: -8,
-            right: -8,
+            top: 4,
+            right: 4,
             child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _uploadedFiles.removeAt(index);
-                });
-              },
+              onTap: onRemove,
               child: Container(
+                padding: const EdgeInsets.all(4),
                 decoration: const BoxDecoration(
-                  color: Colors.red,
+                  color: Colors.black54,
                   shape: BoxShape.circle,
                 ),
-                padding: const EdgeInsets.all(4),
-                child: const Icon(Icons.close, size: 16, color: Colors.white),
+                child: const Icon(Icons.close, color: Colors.white, size: 16),
               ),
             ),
           ),

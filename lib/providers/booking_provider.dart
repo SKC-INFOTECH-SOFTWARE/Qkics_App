@@ -62,16 +62,16 @@ class BookingProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchExperts() async {
+  Future<void> fetchExperts({String? search}) async {
     isLoading = true;
     error = null;
     notifyListeners();
 
     try {
-      experts = await _api.getExperts();
+      experts = await _api.getExperts(search: search);
     } catch (e) {
       error = "Failed to load experts";
-      print('❌ fetchExperts error: $e');
+      debugPrint('❌ fetchExperts error: $e');
     } finally {
       isLoading = false;
       notifyListeners();

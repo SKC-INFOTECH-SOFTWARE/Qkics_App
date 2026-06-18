@@ -86,23 +86,54 @@ class DocumentApiService {
 
   Future<Map<String, dynamic>> updateMyDocument(
     String uuid, {
-    String? accessType,
-    bool? isActive,
+    String? title,
+    String? description,
   }) async {
     final Map<String, dynamic> data = {};
-    if (accessType != null) data['access_type'] = accessType;
-    if (isActive != null) data['is_active'] = isActive;
+    if (title != null) data['title'] = title;
+    if (description != null) data['description'] = description;
 
     final response = await _dio.patch(
-      '/api/v1/documents/my-documents/', // Suggestion: Is this correct? Usually it would be /uuid/
-      // The user spec said: Update My Document /api/v1/documents/my-documents/ PATCH
-      // I'll follow the spec.
+      '/api/v1/documents/my-documents/$uuid/',
       data: data,
     );
     if (response.statusCode == 200) {
       return response.data;
     }
     throw Exception('Failed to update document');
+  }
+
+  Future<Map<String, dynamic>> toggleDocumentStatus(
+    String uuid, {
+    required bool isActive,
+  }) async {
+    final response = await _dio.patch(
+      '/api/v1/documents/my-documents/$uuid/toggle-status/',
+      data: {'is_active': isActive},
+      options: Options(validateStatus: (s) => s != null && s < 500),
+    );
+    if (response.statusCode == 200 || response.statusCode == 204) {
+      return response.data is Map<String, dynamic>
+          ? response.data
+          : <String, dynamic>{};
+    }
+    final data = response.data;
+    String message = 'Failed to toggle document status';
+    if (data is Map) {
+      for (final key in ['detail', 'error', 'message']) {
+        if (data[key] != null) {
+          message = data[key].toString();
+          break;
+        }
+      }
+      if (message == 'Failed to toggle document status') {
+        for (final v in data.values) {
+          if (v is List && v.isNotEmpty) { message = v.first.toString(); break; }
+          if (v is String && v.isNotEmpty) { message = v; break; }
+        }
+      }
+    }
+    throw Exception(message);
   }
 
   Future<Map<String, dynamic>> fetchDownloadHistory() async {

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../providers/document_provider.dart';
 import '../models/document_model.dart';
 import 'upload_document_page.dart';
+import 'document_detail_sheet.dart';
 
 class MyDocumentsPage extends StatefulWidget {
   const MyDocumentsPage({super.key});
@@ -153,7 +154,7 @@ class _MyDocumentsPageState extends State<MyDocumentsPage> {
             color: Colors.transparent,
             child: InkWell(
               borderRadius: BorderRadius.circular(20),
-              onTap: () => _handleMenuAction('change_access', doc),
+              onTap: () => _openDocument(doc),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(
@@ -186,20 +187,9 @@ class _MyDocumentsPageState extends State<MyDocumentsPage> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              _ModernBadge(
-                                label: doc.accessType,
-                                color: _getAccessColor(doc.accessType, theme),
-                              ),
-                              const SizedBox(width: 8),
-                              _ModernBadge(
-                                label: doc.isActive ? "ACTIVE" : "HIDDEN",
-                                color: doc.isActive
-                                    ? Colors.green
-                                    : Colors.blueGrey,
-                              ),
-                            ],
+                          _ModernBadge(
+                            label: doc.isActive ? "ENABLED" : "DISABLED",
+                            color: doc.isActive ? Colors.green : Colors.blueGrey,
                           ),
                         ],
                       ),
@@ -209,37 +199,42 @@ class _MyDocumentsPageState extends State<MyDocumentsPage> {
                         Icons.more_vert_rounded,
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
-                      onSelected: (value) => _handleMenuAction(value, doc),
+                      onSelected: (value) {
+                        if (value == 'edit') {
+                          _showEditSheet(doc);
+                        } else {
+                          _toggleStatus(doc);
+                        }
+                      },
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
                       itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit_outlined, size: 20),
+                              SizedBox(width: 12),
+                              Text("Edit"),
+                            ],
+                          ),
+                        ),
                         PopupMenuItem(
-                          value: 'toggle_active',
+                          value: 'toggle',
                           child: Row(
                             children: [
                               Icon(
                                 doc.isActive
-                                    ? Icons.visibility_off_outlined
-                                    : Icons.visibility_outlined,
-                                size: 20,
+                                    ? Icons.toggle_off_outlined
+                                    : Icons.toggle_on_outlined,
+                                size: 22,
+                                color: doc.isActive
+                                    ? Colors.blueGrey
+                                    : Colors.green,
                               ),
                               const SizedBox(width: 12),
-                              Text(
-                                doc.isActive
-                                    ? "Hide Document"
-                                    : "Show Document",
-                              ),
-                            ],
-                          ),
-                        ),
-                        const PopupMenuItem(
-                          value: 'change_access',
-                          child: Row(
-                            children: [
-                              Icon(Icons.lock_reset_rounded, size: 20),
-                              const SizedBox(width: 12),
-                              Text("Change Access"),
+                              Text(doc.isActive ? "Disable" : "Enable"),
                             ],
                           ),
                         ),
@@ -255,96 +250,148 @@ class _MyDocumentsPageState extends State<MyDocumentsPage> {
     );
   }
 
-  Color _getAccessColor(String type, ThemeData theme) {
-    switch (type) {
-      case 'FREE':
-        return Colors.blue;
-      case 'PREMIUM':
-        return theme.colorScheme.primary;
-      case 'PAID':
-        return Colors.purple;
-      default:
-        return theme.colorScheme.secondary;
-    }
-  }
-
-  void _handleMenuAction(String action, Document doc) {
-    if (doc.uuid == null) return;
-
-    if (action == 'toggle_active') {
-      context.read<DocumentProvider>().updateDocument(
-        doc.uuid!,
-        isActive: !doc.isActive,
-      );
-    } else if (action == 'change_access') {
-      _showAccessDialog(doc);
-    }
-  }
-
-  void _showAccessDialog(Document doc) {
+  void _openDocument(Document doc) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DocumentDetailSheet(document: doc),
+    );
+  }
+
+  void _showEditSheet(Document doc) {
+    if (doc.uuid == null) return;
+    final titleCtrl = TextEditingController(text: doc.title);
+    final descCtrl = TextEditingController(text: doc.description);
+    final formKey = GlobalKey<FormState>();
+    bool saving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Access Level",
-              style: GoogleFonts.inter(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.fromLTRB(
+            24, 24, 24,
+            MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Edit Document",
+                  style: GoogleFonts.inter(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: titleCtrl,
+                  decoration: InputDecoration(
+                    labelText: "Title",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? "Title is required" : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: descCtrl,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: "Description",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  validator: (v) => v == null || v.trim().isEmpty
+                      ? "Description is required"
+                      : null,
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: saving
+                        ? null
+                        : () async {
+                            if (!formKey.currentState!.validate()) return;
+                            final messenger = ScaffoldMessenger.of(context);
+                            final provider = context.read<DocumentProvider>();
+                            setSheetState(() => saving = true);
+                            try {
+                              await provider.updateDocument(
+                                doc.uuid!,
+                                title: titleCtrl.text.trim(),
+                                description: descCtrl.text.trim(),
+                              );
+                              if (ctx.mounted) Navigator.pop(ctx);
+                            } catch (e) {
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(e.toString()),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            } finally {
+                              if (ctx.mounted) {
+                                setSheetState(() => saving = false);
+                              }
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: saving
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            "Save Changes",
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            ...['FREE', 'PREMIUM', 'PAID'].map((type) {
-              return ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: _getAccessColor(
-                      type,
-                      Theme.of(context),
-                    ).withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    type == 'PREMIUM'
-                        ? Icons.star
-                        : (type == 'PAID' ? Icons.payments : Icons.lock_open),
-                    color: _getAccessColor(type, Theme.of(context)),
-                    size: 18,
-                  ),
-                ),
-                title: Text(
-                  type,
-                  style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-                ),
-                trailing: doc.accessType == type
-                    ? Icon(
-                        Icons.check_circle,
-                        color: Theme.of(context).colorScheme.primary,
-                      )
-                    : null,
-                onTap: () {
-                  context.read<DocumentProvider>().updateDocument(
-                    doc.uuid!,
-                    accessType: type,
-                  );
-                  Navigator.pop(context);
-                },
-              );
-            }).toList(),
-            const SizedBox(height: 16),
-          ],
+          ),
         ),
       ),
     );
+  }
+
+  Future<void> _toggleStatus(Document doc) async {
+    if (doc.uuid == null) return;
+    try {
+      await context.read<DocumentProvider>().toggleDocument(doc.uuid!);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }
 

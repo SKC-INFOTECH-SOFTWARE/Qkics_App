@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../providers/notification_provider.dart';
 import '../models/notification_model.dart';
 
 class NotificationsPage extends StatefulWidget {
-  const NotificationsPage({super.key});
+  final ValueChanged<bool>? onBarsVisibilityChanged;
+
+  const NotificationsPage({super.key, this.onBarsVisibilityChanged});
 
   @override
   State<NotificationsPage> createState() => _NotificationsPageState();
@@ -175,7 +178,15 @@ class _NotificationsPageState extends State<NotificationsPage> {
             ),
         ],
       ),
-      body: Consumer<NotificationProvider>(
+      body: NotificationListener<UserScrollNotification>(
+        onNotification: (n) {
+          final cb = widget.onBarsVisibilityChanged;
+          if (cb == null) return false;
+          if (n.direction == ScrollDirection.reverse) cb(false);
+          if (n.direction == ScrollDirection.forward) cb(true);
+          return false;
+        },
+        child: Consumer<NotificationProvider>(
         builder: (context, provider, _) {
           if (provider.isLoading && provider.notifications.isEmpty) {
             return const Center(child: CircularProgressIndicator());
@@ -339,7 +350,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
             ),
           );
         },
-      ),
+        ), // Consumer
+      ),   // NotificationListener
     );
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:q_kics/booking/expert_slots_page.dart';
@@ -13,12 +14,40 @@ class BookingExpertsPage extends StatefulWidget {
 }
 
 class _BookingExpertsPageState extends State<BookingExpertsPage> {
+  bool _searchActive = false;
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
+  Timer? _debounce;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<BookingProvider>().fetchExperts();
     });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocus.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      final q = query.trim().isEmpty ? null : query.trim();
+      context.read<BookingProvider>().fetchExperts(search: q);
+    });
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    _searchFocus.unfocus();
+    setState(() => _searchActive = false);
+    context.read<BookingProvider>().fetchExperts();
   }
 
   @override
@@ -29,13 +58,42 @@ class _BookingExpertsPageState extends State<BookingExpertsPage> {
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
-        title: const Text(
-          "Book an Expert",
-          style: TextStyle(fontWeight: FontWeight.w700),
-        ),
-        centerTitle: true,
+        title: _searchActive
+            ? TextField(
+                controller: _searchController,
+                focusNode: _searchFocus,
+                autofocus: true,
+                onChanged: _onSearchChanged,
+                decoration: InputDecoration(
+                  hintText: 'Search experts…',
+                  border: InputBorder.none,
+                  hintStyle: TextStyle(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
+                ),
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface,
+                  fontSize: 16,
+                ),
+              )
+            : const Text(
+                "Book an Expert",
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+        centerTitle: !_searchActive,
         elevation: 0.5,
         backgroundColor: theme.colorScheme.surface,
+        actions: [
+          _searchActive
+              ? IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: _clearSearch,
+                )
+              : IconButton(
+                  icon: const Icon(Icons.search),
+                  onPressed: () => setState(() => _searchActive = true),
+                ),
+        ],
       ),
       body: Builder(
         builder: (_) {

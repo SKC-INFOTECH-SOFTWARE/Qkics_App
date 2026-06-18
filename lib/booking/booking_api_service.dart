@@ -118,8 +118,11 @@ class BookingApiService {
 
   // ── Experts ──────────────────────────────────────────────────────────────
 
-  Future<List<ExpertModel>> getExperts() async {
-    final response = await dio.get('/api/v1/experts/');
+  Future<List<ExpertModel>> getExperts({String? search}) async {
+    final response = await dio.get(
+      '/api/v1/experts/',
+      queryParameters: (search != null && search.isNotEmpty) ? {'search': search} : null,
+    );
     final data = response.data;
     if (data is Map<String, dynamic>) {
       return (data['results'] as List? ?? []).map((e) => ExpertModel.fromJson(e)).toList();

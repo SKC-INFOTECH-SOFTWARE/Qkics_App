@@ -16,7 +16,8 @@ class DocumentDetailSheet extends StatefulWidget {
 }
 
 class _DocumentDetailSheetState extends State<DocumentDetailSheet> {
-  bool _isFetchingDetail = false;
+  bool _isLoadingDetail = false;
+  bool _isDownloading = false;
   Document? _detailedDoc;
 
   @override
@@ -31,7 +32,7 @@ class _DocumentDetailSheetState extends State<DocumentDetailSheet> {
       return;
     }
 
-    setState(() => _isFetchingDetail = true);
+    setState(() => _isLoadingDetail = true);
     try {
       final doc = await context.read<DocumentProvider>().fetchDocumentDetail(
         widget.document.uuid,
@@ -39,39 +40,39 @@ class _DocumentDetailSheetState extends State<DocumentDetailSheet> {
       if (mounted) {
         setState(() {
           _detailedDoc = doc;
-          _isFetchingDetail = false;
+          _isLoadingDetail = false;
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _isFetchingDetail = false);
+      if (mounted) setState(() => _isLoadingDetail = false);
     }
   }
 
   Future<void> _handleDownload() async {
+    final doc = _detailedDoc ?? widget.document;
     final provider = context.read<DocumentProvider>();
-    setState(() => _isFetchingDetail = true);
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _isDownloading = true);
 
     try {
-      final path = await provider.downloadDocument(widget.document);
+      final path = await provider.downloadDocument(doc);
       if (mounted && path != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(
-            content: Text("Downloaded to: ${path.split('/').last}"),
+            content: Text("Downloaded: ${path.split('/').last}"),
             action: SnackBarAction(
               label: "View",
-              onPressed: () => _viewLocalFile(path, widget.document.title),
+              onPressed: () => _viewLocalFile(path, doc.title),
             ),
           ),
         );
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+      );
     } finally {
-      if (mounted) setState(() => _isFetchingDetail = false);
+      if (mounted) setState(() => _isDownloading = false);
     }
   }
 
@@ -192,11 +193,12 @@ class _DocumentDetailSheetState extends State<DocumentDetailSheet> {
       );
     }
 
+    final busy = _isLoadingDetail || _isDownloading;
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
-        onPressed: _isFetchingDetail ? null : _handleDownload,
-        icon: _isFetchingDetail
+        onPressed: busy ? null : _handleDownload,
+        icon: busy
             ? const SizedBox(
                 width: 20,
                 height: 20,
@@ -206,7 +208,13 @@ class _DocumentDetailSheetState extends State<DocumentDetailSheet> {
                 ),
               )
             : const Icon(Icons.download),
-        label: Text(_isFetchingDetail ? "Processing..." : "Download Document"),
+        label: Text(
+          _isLoadingDetail
+              ? "Loading…"
+              : _isDownloading
+                  ? "Downloading…"
+                  : "Download Document",
+        ),
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 18),
           shape: RoundedRectangleBorder(

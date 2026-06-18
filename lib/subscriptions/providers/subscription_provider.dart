@@ -1,4 +1,5 @@
 // lib/subscriptions/providers/subscription_provider.dart
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../models/subscription_plan.dart';
 import '../models/active_subscription.dart';
@@ -19,6 +20,28 @@ class SubscriptionProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  /// Extracts a human-readable message from an API error, falling back to a
+  /// friendly default instead of leaking raw exceptions / status codes.
+  String _messageFromError(Object e) {
+    if (e is DioException) {
+      final data = e.response?.data;
+      if (data is Map) {
+        for (final key in ['detail', 'error', 'message']) {
+          final value = data[key];
+          if (value != null && value.toString().isNotEmpty) {
+            return value.toString();
+          }
+        }
+        for (final value in data.values) {
+          if (value is List && value.isNotEmpty) return value.first.toString();
+          if (value is String && value.isNotEmpty) return value;
+        }
+      }
+      if (data is String && data.isNotEmpty) return data;
+    }
+    return 'Something went wrong. Please try again.';
+  }
+
   Future<void> fetchPlans() async {
     _isLoading = true;
     _error = null;
@@ -26,11 +49,9 @@ class SubscriptionProvider extends ChangeNotifier {
 
     try {
       _plans = await _service.getSubscriptionPlans();
-      print(_plans);
-
     } catch (e) {
-      _error = e.toString();
-      print("Error fetching subscription plans: $_error");
+      _error = _messageFromError(e);
+      debugPrint("Error fetching subscription plans: $e");
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -45,7 +66,8 @@ class SubscriptionProvider extends ChangeNotifier {
     try {
       _activeSubscription = await _service.getActiveSubscription();
     } catch (e) {
-      _error = e.toString();
+      _error = _messageFromError(e);
+      debugPrint("Error fetching active subscription: $e");
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -66,7 +88,8 @@ class SubscriptionProvider extends ChangeNotifier {
       }
       return false;
     } catch (e) {
-      _error = e.toString();
+      _error = _messageFromError(e);
+      debugPrint("Error subscribing to plan: $e");
       return false;
     } finally {
       _isLoading = false;

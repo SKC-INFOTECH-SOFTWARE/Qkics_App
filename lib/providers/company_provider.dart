@@ -31,6 +31,7 @@ class CompanyProvider with ChangeNotifier {
   String? _nextGlobalPostsCursor;
   bool _isLoadingGlobalPosts = false;
   bool _hasMoreGlobalPosts = true;
+  String? _globalPostsSearch;
 
   // Getters
   List<Company> get myCompanies => _myCompanies;
@@ -114,12 +115,15 @@ class CompanyProvider with ChangeNotifier {
     return null;
   }
 
-  Future<void> fetchMyCompanies() async {
+  Future<void> fetchMyCompanies({String? search}) async {
     _isLoadingMyCompanies = true;
     notifyListeners();
 
     try {
-      final response = await _dio.get("/api/v1/companies/my/");
+      final response = await _dio.get(
+        "/api/v1/companies/my/",
+        queryParameters: (search != null && search.isNotEmpty) ? {'search': search} : null,
+      );
       if (response.statusCode == 200) {
         final List<dynamic> results = response.data['results'] ?? [];
         _myCompanies = results.map((json) => Company.fromJson(json)).toList();
@@ -132,12 +136,15 @@ class CompanyProvider with ChangeNotifier {
     }
   }
 
-  Future<void> fetchCompanyList() async {
+  Future<void> fetchCompanyList({String? search}) async {
     _isLoadingPublicCompanies = true;
     notifyListeners();
 
     try {
-      final response = await _dio.get("/api/v1/companies/list/");
+      final response = await _dio.get(
+        "/api/v1/companies/list/",
+        queryParameters: (search != null && search.isNotEmpty) ? {'search': search} : null,
+      );
       if (response.statusCode == 200) {
         final List<dynamic> results = response.data['results'] ?? [];
         _publicCompanies = results.map((json) => Company.fromJson(json)).toList();
@@ -258,11 +265,15 @@ class CompanyProvider with ChangeNotifier {
     return [];
   }
 
-  Future<void> fetchAllCompanyPosts({bool forceRefresh = false}) async {
-    if (forceRefresh) {
+  Future<void> fetchAllCompanyPosts({bool forceRefresh = false, String? search}) async {
+    final searchChanged = search != _globalPostsSearch;
+    final actualRefresh = forceRefresh || searchChanged;
+
+    if (actualRefresh) {
       _globalPosts.clear();
       _nextGlobalPostsCursor = null;
       _hasMoreGlobalPosts = true;
+      _globalPostsSearch = search;
     }
 
     if (_isLoadingGlobalPosts || !_hasMoreGlobalPosts) return;
@@ -272,16 +283,21 @@ class CompanyProvider with ChangeNotifier {
 
     try {
       String url = "/api/v1/companies/posts/";
-      if (!forceRefresh && _nextGlobalPostsCursor != null) {
+      Map<String, dynamic>? queryParams;
+
+      if (!actualRefresh && _nextGlobalPostsCursor != null) {
+        // cursor URL from DRF already embeds the search param
         url = _nextGlobalPostsCursor!;
+      } else if (_globalPostsSearch != null && _globalPostsSearch!.isNotEmpty) {
+        queryParams = {'search': _globalPostsSearch!};
       }
 
-      final response = await _dio.get(url);
+      final response = await _dio.get(url, queryParameters: queryParams);
       if (response.statusCode == 200) {
         final List<dynamic> results = _extractResults(response.data);
         final newPosts = results.map((json) => CompanyPost.fromJson(json)).toList();
 
-        if (forceRefresh) {
+        if (actualRefresh) {
           _globalPosts = newPosts;
         } else {
           _globalPosts.addAll(newPosts);

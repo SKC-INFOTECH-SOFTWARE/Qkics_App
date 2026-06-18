@@ -207,20 +207,51 @@ class DocumentProvider extends ChangeNotifier {
 
   Future<void> updateDocument(
     String uuid, {
-    String? accessType,
-    bool? isActive,
+    String? title,
+    String? description,
   }) async {
     try {
-      await api.updateMyDocument(
+      final data = await api.updateMyDocument(
         uuid,
-        accessType: accessType,
-        isActive: isActive,
+        title: title,
+        description: description,
       );
-      // Refresh both lists to be safe
-      await fetchDocuments();
-      await fetchMyDocuments();
+      final idx = _myDocuments.indexWhere((d) => d.uuid == uuid);
+      if (idx != -1) {
+        _myDocuments[idx] = Document.fromJson(data);
+        notifyListeners();
+      }
     } catch (e) {
       debugPrint("Update doc failed: $e");
+      rethrow;
+    }
+  }
+
+  Future<void> toggleDocument(String uuid) async {
+    final idx = _myDocuments.indexWhere((d) => d.uuid == uuid);
+    final newValue = idx != -1 ? !_myDocuments[idx].isActive : true;
+
+    // Optimistic update
+    if (idx != -1) {
+      _myDocuments[idx] = _myDocuments[idx].copyWith(isActive: newValue);
+      notifyListeners();
+    }
+
+    try {
+      final data = await api.toggleDocumentStatus(uuid, isActive: newValue);
+      if (idx != -1) {
+        _myDocuments[idx] = Document.fromJson(data);
+        notifyListeners();
+      }
+    } catch (e) {
+      // Revert on failure
+      if (idx != -1) {
+        _myDocuments[idx] = _myDocuments[idx].copyWith(
+          isActive: !_myDocuments[idx].isActive,
+        );
+        notifyListeners();
+      }
+      debugPrint("Toggle doc failed: $e");
       rethrow;
     }
   }

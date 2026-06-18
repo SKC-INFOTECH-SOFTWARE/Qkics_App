@@ -94,6 +94,20 @@ class ApiProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // Update profile image for all posts authored by [userId] in the feed.
+  void updateAuthorProfileImages(int userId, String? newImageUrl) {
+    final newUrl = newImageUrl ?? '';
+    bool changed = false;
+    _posts = _posts.map((post) {
+      if (post.author.id == userId) {
+        changed = true;
+        return post.copyWith(author: post.author.copyWith(profileImage: newUrl));
+      }
+      return post;
+    }).toList();
+    if (changed) notifyListeners();
+  }
+
   // Initialize Dio + Cookies + Load saved token
   Future<void> init() async {
     _dio = Dio(

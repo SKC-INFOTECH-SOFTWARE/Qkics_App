@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 import 'package:q_kics/booking/create_slot_page.dart';
 import 'package:q_kics/booking/investor_create_slot_page.dart';
@@ -32,73 +33,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _loadedSubProfiles = false;
   late final ScrollController _scrollController;
   bool _isNavbarVisible = true;
-  double _previousPixels = 0.0;
-  static const double _velocityThreshold = 200;
 
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController()..addListener(_scrollListener);
+    _scrollController = ScrollController();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      // Preload sub profiles safely
-      final expertProvider = context.read<ExpertProfileProvider>();
-      final entrepreneurProvider = context.read<EntrepreneurProfileProvider>();
-      final investorProvider = context.read<InvestorProfileProvider>();
-      final subscriptionProvider = context.read<SubscriptionProvider>();
-
-      await expertProvider.fetchExpertProfile();
-      if (!mounted) return;
-      await entrepreneurProvider.fetchEntrepreneurProfile();
-      if (!mounted) return;
-      await investorProvider.fetchMyProfile();
-      if (!mounted) return;
-      // Fetch active subscription
-      await subscriptionProvider.fetchActiveSubscription();
+      await _loadSubProfiles();
     });
   }
 
-  void _scrollListener() {
-    if (!_scrollController.hasClients) return;
+  Future<void> _loadSubProfiles() async {
+    final expertProvider = context.read<ExpertProfileProvider>();
+    final entrepreneurProvider = context.read<EntrepreneurProfileProvider>();
+    final investorProvider = context.read<InvestorProfileProvider>();
+    final subscriptionProvider = context.read<SubscriptionProvider>();
 
-    final currentPixels = _scrollController.position.pixels;
-    final delta = currentPixels - _previousPixels;
-    final velocity = delta.abs() * 10;
+    await expertProvider.fetchExpertProfile();
+    if (!mounted) return;
+    await entrepreneurProvider.fetchEntrepreneurProfile();
+    if (!mounted) return;
+    await investorProvider.fetchMyProfile();
+    if (!mounted) return;
+    await subscriptionProvider.fetchActiveSubscription();
+  }
 
-    bool shouldHide = false;
-    bool shouldShow = false;
+  void _onUserScroll(UserScrollNotification notification) {
+    final pixels =
+        _scrollController.hasClients ? _scrollController.position.pixels : 0.0;
 
-    if (velocity > _velocityThreshold) {
-      if (delta > 0 && currentPixels > 100) {
-        // Scrolling down and not at top → hide
-        shouldHide = true;
-      } else if (delta < 0) {
-        // Scrolling up → show
-        shouldShow = true;
+    if (notification.direction == ScrollDirection.reverse && pixels > 80) {
+      // Scrolling down and not near the top → hide
+      if (_isNavbarVisible) {
+        _isNavbarVisible = false;
+        widget.onBarsVisibilityChanged?.call(false);
+      }
+    } else if (notification.direction == ScrollDirection.forward) {
+      // Scrolling up → show
+      if (!_isNavbarVisible) {
+        _isNavbarVisible = true;
+        widget.onBarsVisibilityChanged?.call(true);
       }
     }
-
-    // Always show if at the very top
-    if (currentPixels <= 0) {
-      shouldShow = true;
-      shouldHide = false;
-    }
-
-    if (shouldHide && _isNavbarVisible) {
-      _isNavbarVisible = false;
-      widget.onBarsVisibilityChanged?.call(false);
-    } else if (shouldShow && !_isNavbarVisible) {
-      _isNavbarVisible = true;
-      widget.onBarsVisibilityChanged?.call(true);
-    }
-
-    _previousPixels = currentPixels;
   }
 
   @override
   void dispose() {
-    _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
     super.dispose();
   }
@@ -156,10 +138,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: RefreshIndicator(
               onRefresh: () async {
                 if (!mounted) return;
-                _loadedSubProfiles = false;
                 await context.read<ProfileProvider>().loadProfile(force: true);
+                if (!mounted) return;
+                await _loadSubProfiles();
               },
-              child: NestedScrollView(
+              child: NotificationListener<UserScrollNotification>(
+                onNotification: (n) {
+                  _onUserScroll(n);
+                  return false;
+                },
+                child: NestedScrollView(
                 controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(),
                 headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
@@ -184,16 +172,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         onCreateSlotsTap: () async {
                           if (!mounted) return;
 
+                          // Capture context-dependent objects up front so
+                          // nothing is used across the async gap below.
+                          final messenger = ScaffoldMessenger.of(context);
+                          final navigator = Navigator.of(context);
                           final investorProvider = context
                               .read<InvestorProfileProvider>();
                           final expertProvider = context
                               .read<ExpertProfileProvider>();
+                          final bookingProvider = context
+                              .read<BookingProvider>();
 
                           // ─── INVESTOR ───
                           if (investorProvider.exists) {
                             final investorProfile = investorProvider.profile;
                             if (investorProfile == null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
+                              messenger.showSnackBar(
                                 const SnackBar(
                                   content: Text("Investor profile not ready"),
                                 ),
@@ -201,15 +195,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               return;
                             }
 
-                            final bookingProvider = context
-                                .read<BookingProvider>();
                             bookingProvider.setInvestorUuid(
                               investorProfile.uuid,
                             );
 
-                            if (!mounted) return;
-                            Navigator.push(
-                              context,
+                            navigator.push(
                               MaterialPageRoute(
                                 builder: (_) => ChangeNotifierProvider.value(
                                   value: bookingProvider,
@@ -229,7 +219,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           final expertUuid = expertProvider.expertUuid;
 
                           if (expertUuid == null || expertUuid.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            messenger.showSnackBar(
                               const SnackBar(
                                 content: Text("Expert profile not ready"),
                               ),
@@ -237,12 +227,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             return;
                           }
 
-                          final bookingProvider = context
-                              .read<BookingProvider>();
                           bookingProvider.setExpertUuid(expertUuid);
 
-                          Navigator.push(
-                            context,
+                          navigator.push(
                             MaterialPageRoute(
                               builder: (_) => ChangeNotifierProvider.value(
                                 value: bookingProvider,
@@ -370,6 +357,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
               ),
+              ),
             ),
           );
         },
@@ -402,7 +390,7 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(_SliverAppBarDelegate oldDelegate) {
-    return false;
+    return _tabBar != oldDelegate._tabBar;
   }
 }
 

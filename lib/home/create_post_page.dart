@@ -1,6 +1,7 @@
 // lib/screens/create_post_page.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -12,7 +13,9 @@ import 'package:q_kics/home/image_ratio_selector_sheet.dart';
 
 class CreatePostPage extends StatefulWidget {
   final Post? postToEdit;
-  const CreatePostPage({super.key, this.postToEdit});
+  final ValueChanged<bool>? onBarsVisibilityChanged;
+
+  const CreatePostPage({super.key, this.postToEdit, this.onBarsVisibilityChanged});
 
   @override
   State<CreatePostPage> createState() => _CreatePostPageState();
@@ -309,6 +312,10 @@ class _CreatePostPageState extends State<CreatePostPage> {
       appBar: AppBar(
         title: Text(_isEditMode ? "Edit Post" : "Create Post"),
         elevation: 0,
+        // When used as a tab (index 2 in IndexedStack) there is no route to
+        // pop, so suppress the auto back button. In edit mode it is pushed
+        // as a proper route and the back button should appear.
+        automaticallyImplyLeading: _isEditMode,
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
@@ -335,7 +342,15 @@ class _CreatePostPageState extends State<CreatePostPage> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: NotificationListener<UserScrollNotification>(
+        onNotification: (n) {
+          final cb = widget.onBarsVisibilityChanged;
+          if (cb == null) return false;
+          if (n.direction == ScrollDirection.reverse) cb(false);
+          if (n.direction == ScrollDirection.forward) cb(true);
+          return false;
+        },
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -570,7 +585,8 @@ class _CreatePostPageState extends State<CreatePostPage> {
               ),
           ],
         ),
-      ),
+        ), // SingleChildScrollView
+      ),   // NotificationListener
     );
   }
 

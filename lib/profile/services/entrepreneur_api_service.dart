@@ -20,8 +20,11 @@ class EntrepreneurApiService {
     return res.data;
   }
 
-  Future<List<EntrepreneurProfile>> getAllEntrepreneurs() async {
-  final res = await dio.get('/api/v1/entrepreneurs/');
+  Future<List<EntrepreneurProfile>> getAllEntrepreneurs({String? search}) async {
+  final res = await dio.get(
+    '/api/v1/entrepreneurs/',
+    queryParameters: (search != null && search.isNotEmpty) ? {'search': search} : null,
+  );
 
   final data = res.data as Map<String, dynamic>;
   final List<dynamic> results = data['results'];

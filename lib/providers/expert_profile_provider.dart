@@ -41,6 +41,15 @@ bool get initialized => _initialized;
   bool get isPending =>
       profile != null && profile!.applicationStatus == 'pending';
 
+  bool get isApproved =>
+      profile != null && profile!.applicationStatus == 'approved';
+
+  bool get isRejected =>
+      profile != null && profile!.applicationStatus == 'rejected';
+
+  /// Admin's reason for rejection (only meaningful when [isRejected]).
+  String? get rejectionReason => isRejected ? profile!.adminReviewNote : null;
+
   Future<void> fetchExpertProfile() async {
   if (_profileLoading) return;
 

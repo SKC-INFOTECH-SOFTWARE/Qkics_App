@@ -36,6 +36,18 @@ class PostAuthor {
     final name = "${firstName.trim()} ${lastName.trim()}".trim();
     return name.isEmpty ? username : name;
   }
+
+  PostAuthor copyWith({String? profileImage}) {
+    return PostAuthor(
+      id: id,
+      username: username,
+      firstName: firstName,
+      lastName: lastName,
+      userType: userType,
+      userTypeDisplay: userTypeDisplay,
+      profileImage: profileImage ?? this.profileImage,
+    );
+  }
 }
 
 class PostTag {
@@ -120,6 +132,26 @@ class Post {
     required this.createdAt,
     required this.updatedAt,
   });
+
+  Post copyWith({PostAuthor? author}) {
+    return Post(
+      id: id,
+      author: author ?? this.author,
+      title: title,
+      content: content,
+      previewContent: previewContent,
+      fullContent: fullContent,
+      image: image,
+      media: media,
+      tags: tags,
+      knowledgeHub: knowledgeHub,
+      totalLikes: totalLikes,
+      totalComments: totalComments,
+      isLiked: isLiked,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
+  }
 
   factory Post.fromJson(Map<String, dynamic> json) {
     return Post(

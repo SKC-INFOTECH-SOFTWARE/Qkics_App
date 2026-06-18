@@ -31,6 +31,18 @@ class Document {
     );
   }
 
+  Document copyWith({bool? isActive}) {
+    return Document(
+      uuid: uuid,
+      title: title,
+      description: description,
+      accessType: accessType,
+      isActive: isActive ?? this.isActive,
+      createdAt: createdAt,
+      file: file,
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       if (uuid != null) 'uuid': uuid,

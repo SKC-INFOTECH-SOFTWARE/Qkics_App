@@ -20,8 +20,11 @@ class ExpertApiService {
     return res.data;
   }
 
-Future<List<ExpertProfile>> getAllExperts() async {
-  final res = await dio.get('/api/v1/experts/');
+Future<List<ExpertProfile>> getAllExperts({String? search}) async {
+  final res = await dio.get(
+    '/api/v1/experts/',
+    queryParameters: (search != null && search.isNotEmpty) ? {'search': search} : null,
+  );
 
   final data = res.data as Map<String, dynamic>;
   final List<dynamic> results = data['results'];

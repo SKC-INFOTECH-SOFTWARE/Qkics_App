@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:q_kics/providers/company_provider.dart';
 import 'package:q_kics/companies/widgets/company_post_card.dart';
+import 'package:q_kics/home/post_shimmer.dart';
 
 class CompanyPostsPage extends StatefulWidget {
   const CompanyPostsPage({super.key});
@@ -51,7 +52,11 @@ class _CompanyPostsPageState extends State<CompanyPostsPage> {
         final isLoading = provider.isLoadingGlobalPosts;
 
         if (isLoading && posts.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+            itemCount: 3,
+            itemBuilder: (_, __) => const PostShimmer(),
+          );
         }
 
         if (posts.isEmpty) {
@@ -89,20 +94,17 @@ class _CompanyPostsPageState extends State<CompanyPostsPage> {
 
         return RefreshIndicator(
           onRefresh: _onRefresh,
-          child: ListView.separated(
+          color: Theme.of(context).colorScheme.primary,
+          backgroundColor: Colors.white,
+          child: ListView.builder(
             controller: _scrollController,
-            padding: const EdgeInsets.only(top: 16, bottom: 100),
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
             itemCount: posts.length + (provider.hasMoreGlobalPosts ? 1 : 0),
-            separatorBuilder: (context, index) => const SizedBox(height: 16),
             itemBuilder: (context, index) {
               if (index == posts.length) {
-                return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16.0),
-                  child: Center(child: CircularProgressIndicator()),
-                );
+                return const PostShimmer();
               }
-              final post = posts[index];
-              return CompanyPostCard(post: post);
+              return CompanyPostCard(post: posts[index]);
             },
           ),
         );

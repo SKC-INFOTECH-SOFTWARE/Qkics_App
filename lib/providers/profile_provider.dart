@@ -93,13 +93,31 @@ class ProfileProvider extends ChangeNotifier {
 
       profile = UserProfile.fromJson(data);
 
-      await apiProvider.getCurrentUser();
+      // Force-refresh so ApiProvider._currentUser gets the new profile picture.
+      await apiProvider.getCurrentUser(forceRefresh: true);
 
-      if (oldImageUrl != null &&
-          oldImageUrl.isNotEmpty &&
-          oldImageUrl != profile?.profilePicture) {
+      // Propagate the new avatar URL into every cached feed post authored by
+      // this user so PostCard avatars update without a full feed reload.
+      final updatedUser = apiProvider.currentUser;
+      if (updatedUser != null) {
+        apiProvider.updateAuthorProfileImages(
+          updatedUser.id,
+          updatedUser.profileImage,
+        );
+      }
+
+      // Evict old image from disk/memory cache.
+      if (oldImageUrl != null && oldImageUrl.isNotEmpty) {
         await CachedNetworkImage.evictFromCache(oldImageUrl);
       }
+      // Also evict the new URL in case the backend reused the same path.
+      final newImageUrl = updatedUser?.profileImage ?? profile?.profilePicture;
+      if (newImageUrl != null &&
+          newImageUrl.isNotEmpty &&
+          newImageUrl != oldImageUrl) {
+        await CachedNetworkImage.evictFromCache(newImageUrl);
+      }
+
       notifyListeners();
     } finally {
       loadingProfile = false;

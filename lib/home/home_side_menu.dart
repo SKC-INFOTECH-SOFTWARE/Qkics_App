@@ -5,11 +5,11 @@ import 'package:q_kics/Auth/login.dart';
 import 'package:q_kics/booking/booking_experts_page.dart';
 import 'package:q_kics/booking/sessions_page.dart';
 import 'package:q_kics/booking/user_bookings_page.dart';
-import 'package:q_kics/profile/profile_route.dart';
 import 'package:q_kics/profile/ui/authorized_profiles_page.dart';
 import 'package:q_kics/documents/ui/knowledge_hub_page.dart';
 import 'package:q_kics/providers/api_provider.dart';
 import 'package:q_kics/providers/booking_provider.dart';
+import 'package:q_kics/providers/navigation_provider.dart';
 import 'package:q_kics/chat/screens/chat_rooms_page.dart';
 import 'package:q_kics/home/knowledge_hub_posts_page.dart';
 import 'package:q_kics/profile/ui/settings_page.dart';
@@ -50,10 +50,9 @@ class _HomeSideMenuState extends State<HomeSideMenu> {
             color: colorScheme.primary.withValues(alpha: 0.05),
             child: InkWell(
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ProfileRoute()),
-                );
+                final nav = context.read<NavigationProvider>();
+                Navigator.pop(context); // close drawer
+                nav.goProfile();
               },
               child: Row(
                 children: [
@@ -203,6 +202,20 @@ class _HomeSideMenuState extends State<HomeSideMenu> {
                       context,
                       MaterialPageRoute(builder: (_) => const ChatRoomsPage()),
                     );
+                  },
+                ),
+
+                const SizedBox(height: 8),
+
+                /// Companies
+                _drawerItem(
+                  context,
+                  Icons.business_outlined,
+                  "Companies",
+                  onTap: () {
+                    final nav = context.read<NavigationProvider>();
+                    Navigator.pop(context); // close drawer
+                    nav.goCompanies();
                   },
                 ),
 
@@ -400,16 +413,28 @@ class _HomeSideMenuState extends State<HomeSideMenu> {
       );
     }
 
-    final bustedUrl = '$imageUrl?ts=${DateTime.now().millisecondsSinceEpoch}';
-
     return CircleAvatar(
       radius: radius,
       child: ClipOval(
         child: CachedNetworkImage(
-          imageUrl: bustedUrl,
+          imageUrl: imageUrl,
           fit: BoxFit.cover,
           width: radius * 2,
           height: radius * 2,
+          placeholder: (_, __) => CircleAvatar(
+            radius: radius,
+            backgroundColor: Theme.of(
+              context,
+            ).colorScheme.primary.withValues(alpha: 0.15),
+            child: Text(initial),
+          ),
+          errorWidget: (_, __, ___) => CircleAvatar(
+            radius: radius,
+            backgroundColor: Theme.of(
+              context,
+            ).colorScheme.primary.withValues(alpha: 0.15),
+            child: Text(initial),
+          ),
         ),
       ),
     );

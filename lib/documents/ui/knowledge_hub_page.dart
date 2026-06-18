@@ -171,10 +171,10 @@ class _KnowledgeHubPageState extends State<KnowledgeHubPage> {
             ),
             child: TextField(
               controller: _searchController,
+              onChanged: (val) => setState(() => _searchQuery = val),
               onSubmitted: (val) {
-                setState(() => _searchQuery = val);
                 context.read<DocumentProvider>().fetchDocuments(
-                  search: val,
+                  search: val.trim().isEmpty ? null : val.trim(),
                   isActive: true,
                   accessType: _selectedAccess,
                 );
@@ -188,7 +188,7 @@ class _KnowledgeHubPageState extends State<KnowledgeHubPage> {
                   Icons.search,
                   color: theme.colorScheme.primary,
                 ),
-                suffixIcon: _searchQuery.isNotEmpty
+                suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear, size: 20),
                         onPressed: () {
@@ -257,7 +257,7 @@ class _KnowledgeHubPageState extends State<KnowledgeHubPage> {
 
   Widget _buildShimmer(ThemeData theme) {
     return Shimmer.fromColors(
-      baseColor: theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
+      baseColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
       highlightColor: theme.colorScheme.surface,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),

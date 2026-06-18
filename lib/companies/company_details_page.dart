@@ -8,6 +8,7 @@ import 'package:q_kics/companies/create_company_post_page.dart';
 import 'package:q_kics/companies/create_company_page.dart';
 import 'package:q_kics/providers/api_provider.dart';
 import 'package:q_kics/companies/widgets/company_post_card.dart';
+import 'package:q_kics/home/post_shimmer.dart';
 
 class CompanyDetailsPage extends StatefulWidget {
   final Company company;
@@ -253,20 +254,13 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage>
               ),
             ),
             SliverPersistentHeader(
-              delegate: _SliverAppBarDelegate(
-                TabBar(
-                  controller: _tabController,
-                  labelColor: colorScheme.primary,
-                  unselectedLabelColor: colorScheme.onSurface.withValues(
-                    alpha: 0.6,
-                  ),
-                  indicatorColor: colorScheme.primary,
-                  tabs: const [
-                    Tab(text: "Posts"),
-                    Tab(text: "About"),
-                  ],
-                ),
-                colorScheme.surface,
+              delegate: _ChipTabDelegate(
+                tabController: _tabController,
+                tabs: const [
+                  (label: 'Posts', icon: Icons.article_outlined),
+                  (label: 'About', icon: Icons.info_outline),
+                ],
+                backgroundColor: theme.scaffoldBackgroundColor,
               ),
               pinned: true,
             ),
@@ -289,24 +283,24 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage>
     return FutureBuilder<List<CompanyPost>>(
       future: _postsFuture,
       builder: (context, snapshot) {
+        // ── Loading ───────────────────────────────────────────
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+            itemCount: 3,
+            itemBuilder: (_, __) => const PostShimmer(),
+          );
         }
+
+        // ── Error ─────────────────────────────────────────────
         if (snapshot.hasError) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 48,
-                  color: theme.colorScheme.error,
-                ),
+                Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
                 const SizedBox(height: 12),
-                Text(
-                  "Couldn't load posts.",
-                  style: theme.textTheme.bodyMedium,
-                ),
+                Text("Couldn't load posts.", style: theme.textTheme.bodyMedium),
                 const SizedBox(height: 12),
                 OutlinedButton(
                   onPressed: () => setState(() => _loadPosts()),
@@ -317,6 +311,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage>
           );
         }
 
+        // ── Empty ─────────────────────────────────────────────
         final posts = snapshot.data ?? [];
         if (posts.isEmpty) {
           return Center(
@@ -326,9 +321,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage>
                 Icon(
                   Icons.feed_outlined,
                   size: 60,
-                  color: theme.colorScheme.onSurfaceVariant.withValues(
-                    alpha: 0.5,
-                  ),
+                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                 ),
                 const SizedBox(height: 16),
                 Text(
@@ -342,13 +335,15 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage>
           );
         }
 
-        return ListView.separated(
+        // ── Feed ──────────────────────────────────────────────
+        return ListView.builder(
           padding: EdgeInsets.only(
-            top: 16,
+            left: 2,
+            right: 2,
+            top: 8,
             bottom: canManage ? 96 : 16,
           ),
           itemCount: posts.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 16),
           itemBuilder: (context, index) {
             final post = posts[index];
             return CompanyPostCard(
@@ -365,9 +360,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage>
                           ),
                         ),
                       );
-                      if (updated == true && mounted) {
-                        setState(() => _loadPosts());
-                      }
+                      if (updated == true && mounted) setState(() => _loadPosts());
                     }
                   : null,
               onDelete: canManage
@@ -473,9 +466,10 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage>
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
                 child: ListView.separated(
+                  padding: EdgeInsets.zero,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: widget.company.members.length,
@@ -585,28 +579,97 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage>
   }
 }
 
-class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
-  final TabBar _tabBar;
-  final Color _color;
+class _ChipTabDelegate extends SliverPersistentHeaderDelegate {
+  final TabController tabController;
+  final List<({String label, IconData icon})> tabs;
+  final Color backgroundColor;
 
-  _SliverAppBarDelegate(this._tabBar, this._color);
+  const _ChipTabDelegate({
+    required this.tabController,
+    required this.tabs,
+    required this.backgroundColor,
+  });
+
+  static const double _height = 52.0;
 
   @override
-  double get minExtent => _tabBar.preferredSize.height;
+  double get minExtent => _height;
   @override
-  double get maxExtent => _tabBar.preferredSize.height;
+  double get maxExtent => _height;
 
   @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return Container(color: _color, child: _tabBar);
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return AnimatedBuilder(
+      animation: tabController,
+      builder: (context, _) {
+        final selected = tabController.index;
+        return Container(
+          height: _height,
+          color: backgroundColor,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: List.generate(tabs.length, (i) {
+                final isSelected = selected == i;
+                return Padding(
+                  padding: EdgeInsets.only(right: i < tabs.length - 1 ? 8 : 0),
+                  child: GestureDetector(
+                    onTap: () => tabController.animateTo(i),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeInOut,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? colorScheme.primary
+                            : colorScheme.surfaceContainerHighest
+                                  .withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            tabs[i].icon,
+                            size: 15,
+                            color: isSelected
+                                ? colorScheme.onPrimary
+                                : colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            tabs[i].label,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                              color: isSelected
+                                  ? colorScheme.onPrimary
+                                  : colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
-  bool shouldRebuild(_SliverAppBarDelegate oldDelegate) {
-    return false;
-  }
+  bool shouldRebuild(_ChipTabDelegate old) =>
+      old.tabController != tabController ||
+      old.tabs != tabs ||
+      old.backgroundColor != backgroundColor;
 }
