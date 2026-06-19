@@ -62,10 +62,14 @@ class ApiProvider with ChangeNotifier {
   bool _isLoadingMore = false;
   bool _hasMore = true;
   String? _selectedTag;
+  bool _hasFetchedPosts = false;
 
   bool get isLoadingMore => _isLoadingMore;
   bool get hasMore => _hasMore;
   String? get selectedTag => _selectedTag;
+  // True once the first posts fetch has completed (success or failure).
+  // Used to avoid flashing the "no questions" empty state before data loads.
+  bool get hasFetchedPosts => _hasFetchedPosts;
 
   // Knowledge Hub Posts
   List<Post> _knowledgeHubPosts = [];
@@ -489,6 +493,7 @@ class ApiProvider with ChangeNotifier {
       debugPrint("Unexpected error: $e");
     } finally {
       _isLoadingMore = false;
+      _hasFetchedPosts = true;
       // Final safe notify
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) notifyListeners();
@@ -981,6 +986,10 @@ class ApiProvider with ChangeNotifier {
       if (!success) {
         debugPrint("Update failed with status: ${response.statusCode}");
         debugPrint("Response data: ${response.data}");
+      } else {
+        // Keep local feeds in sync so the home + knowledge hub lists reflect
+        // the edit without a manual refresh.
+        await _syncUpdatedPost(postId);
       }
 
       return success;
@@ -1010,6 +1019,33 @@ class ApiProvider with ChangeNotifier {
     return null;
   }
 
+  /// Re-fetch an edited post and patch it into the local feeds. Handles the
+  /// knowledge_hub flag toggling: removes/adds the post from the knowledge hub
+  /// feed as needed so it stays accurate after an edit.
+  Future<void> _syncUpdatedPost(int postId) async {
+    final updated = await fetchSinglePost(postId);
+    if (updated == null) return;
+
+    // Main feed: replace in place if present.
+    _posts = _posts
+        .map((p) => p.id == postId ? updated : p)
+        .toList();
+
+    // Knowledge hub feed: keep membership in sync with the knowledge_hub flag.
+    final khIndex = _knowledgeHubPosts.indexWhere((p) => p.id == postId);
+    if (updated.knowledgeHub) {
+      if (khIndex >= 0) {
+        _knowledgeHubPosts[khIndex] = updated;
+      } else {
+        _knowledgeHubPosts.insert(0, updated);
+      }
+    } else if (khIndex >= 0) {
+      _knowledgeHubPosts.removeAt(khIndex);
+    }
+
+    notifyListeners();
+  }
+
   /// DELETE POST
   /// DELETE /api/v1/community/posts/<post_id>/
   Future<bool> deletePost(int postId) async {
@@ -1019,8 +1055,9 @@ class ApiProvider with ChangeNotifier {
       if (response.statusCode == 204 || response.statusCode == 200) {
         debugPrint("Post deleted successfully: ${response.statusCode}");
 
-        // 🔥 REMOVE FROM LOCAL LIST
+        // 🔥 REMOVE FROM LOCAL LISTS (main feed + knowledge hub feed)
         _posts.removeWhere((post) => post.id == postId);
+        _knowledgeHubPosts.removeWhere((post) => post.id == postId);
 
         // 🔥 UPDATE UI
         notifyListeners();

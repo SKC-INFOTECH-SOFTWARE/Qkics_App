@@ -3,11 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:q_kics/providers/navigation_provider.dart';
 import 'package:q_kics/providers/api_provider.dart';
 import 'package:q_kics/providers/notification_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:q_kics/home/home_side_menu.dart';
+import 'package:q_kics/home/search_page.dart';
+import 'package:q_kics/home/create_post_page.dart';
 import 'package:q_kics/home/post_card.dart';
 import 'package:q_kics/models/user.dart';
 import 'package:q_kics/home/post_shimmer.dart';
@@ -201,7 +202,12 @@ class _HomePageState extends State<HomePage> {
                       icon: Icon(Icons.search, size: 28 * scale),
                       color: colorScheme.primary,
                       onPressed: () {
-                        context.read<NavigationProvider>().goSearch();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const SearchPage(),
+                          ),
+                        );
                       },
                     ),
                     IconButton(
@@ -209,7 +215,12 @@ class _HomePageState extends State<HomePage> {
                       color: colorScheme.primary,
                       tooltip: "Create Post",
                       onPressed: () {
-                        context.read<NavigationProvider>().goPost();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const CreatePostPage(),
+                          ),
+                        );
                       },
                     ),
                     const SizedBox(width: 8),
@@ -312,7 +323,7 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ),
-          if (posts.isEmpty && api.isLoadingMore)
+          if (posts.isEmpty && (api.isLoadingMore || !api.hasFetchedPosts))
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
               sliver: SliverList(
@@ -322,7 +333,7 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             )
-          else if (posts.isEmpty && !api.isLoadingMore)
+          else if (posts.isEmpty && api.hasFetchedPosts && !api.isLoadingMore)
             SliverFillRemaining(
               hasScrollBody: false,
               child: Center(

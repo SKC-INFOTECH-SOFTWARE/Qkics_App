@@ -5,6 +5,7 @@ import 'package:q_kics/booking/investor_slots_page.dart';
 import 'package:shimmer/shimmer.dart';
 
 import 'package:q_kics/profile/models/user_profile_model.dart';
+import 'package:q_kics/profile/models/public_profile_model.dart';
 import 'package:q_kics/profile/ui/widgets/profile_header.dart';
 import 'package:q_kics/profile/ui/widgets/posts_tab.dart';
 import 'package:q_kics/profile/ui/widgets/about_tab.dart';
@@ -53,9 +54,22 @@ class PublicProfilePage extends StatelessWidget {
 
             final int tabCount = showAbout ? 2 : 1;
 
+            // Role highlight shown under the username in the header:
+            // primary expertise for experts, investor type for investors.
+            final roleProfile = provider.response!.profile;
+            String? roleHighlight;
+            if (roleProfile is PublicExpertProfile) {
+              roleHighlight = roleProfile.primaryExpertise;
+            } else if (roleProfile is PublicInvestorProfile) {
+              roleHighlight = roleProfile.investorTypeDisplay;
+            }
+
             return DefaultTabController(
               length: tabCount,
-              child: CustomScrollView(
+              child: RefreshIndicator(
+                onRefresh: () => provider.fetchPublicProfile(username),
+                color: theme.colorScheme.primary,
+                child: CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
                   // ================= APPBAR (Pinned Time Portion) =================
@@ -73,6 +87,7 @@ class PublicProfilePage extends StatelessWidget {
                     child: ProfileHeader(
                       profile: publicUserProfile,
                       isPublicView: true,
+                      publicRoleHighlight: roleHighlight,
 
                       // ✅ PUBLIC EXPERT/INVESTOR → VIEW SLOTS
                       onViewSlotsTap:
@@ -141,6 +156,7 @@ class PublicProfilePage extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
               ),
             );
           },

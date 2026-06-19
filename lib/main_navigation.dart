@@ -4,9 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:provider/provider.dart' hide Consumer;
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:q_kics/home/create_post_page.dart';
 import 'package:q_kics/home/home.dart';
-import 'package:q_kics/home/search_page.dart';
+import 'package:q_kics/home/knowledge_hub_posts_page.dart';
 import 'package:q_kics/profile/profile_route.dart';
 import 'package:q_kics/providers/navigation_provider.dart';
 import 'package:q_kics/providers/profile_provider.dart';
@@ -67,15 +66,14 @@ class _MainNavigationState extends State<MainNavigation> {
     final isTablet = screenWidth >= 600;
     final double paddingX = isTablet ? 32.0 : 16.0;
     final double navBarWidth = screenWidth - (paddingX * 2);
-    final double tabWidth = navBarWidth / 6; // 6 items
+    final double tabWidth = navBarWidth / 5; // 5 items
 
     final pages = [
       HomePage(
         scrollController: _homeScrollController,
         onBarsVisibilityChanged: _onBarsVisibilityChanged,
       ),
-      const SearchPage(),
-      CreatePostPage(onBarsVisibilityChanged: _onBarsVisibilityChanged),
+      const KnowledgeHubPostsPage(embedded: true),
       CompaniesPage(onBarsVisibilityChanged: _onBarsVisibilityChanged),
       NotificationsPage(onBarsVisibilityChanged: _onBarsVisibilityChanged),
       ProfileRoute(onBarsVisibilityChanged: _onBarsVisibilityChanged),
@@ -97,7 +95,7 @@ class _MainNavigationState extends State<MainNavigation> {
         curve: Curves.easeOutCubic,
         offset: _isBottomBarVisible ? Offset.zero : const Offset(0, 2),
         child: Padding(
-          padding: EdgeInsets.fromLTRB(paddingX, 0, paddingX, 24),
+          padding: EdgeInsets.fromLTRB(paddingX, 0, paddingX, 6),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(30), // Pill shape
             child: BackdropFilter(
@@ -173,28 +171,22 @@ class _MainNavigationState extends State<MainNavigation> {
                           onTap: () => nav.setIndex(0),
                         ),
                         _NavItem(
-                          icon: Icons.search_outlined,
-                          activeIcon: Icons.search_rounded,
+                          icon: Icons.auto_stories_outlined,
+                          activeIcon: Icons.auto_stories_rounded,
                           isSelected: nav.index == 1,
                           onTap: () => nav.setIndex(1),
                         ),
                         _NavItem(
-                          icon: Icons.add_box_outlined,
-                          activeIcon: Icons.add_box_rounded,
+                          icon: Icons.business_center_outlined,
+                          activeIcon: Icons.business_center_rounded,
                           isSelected: nav.index == 2,
                           onTap: () => nav.setIndex(2),
                         ),
                         _NavItem(
-                          icon: Icons.business_center_outlined,
-                          activeIcon: Icons.business_center_rounded,
-                          isSelected: nav.index == 3,
-                          onTap: () => nav.setIndex(3),
-                        ),
-                        _NavItem(
                           icon: Icons.notifications_outlined,
                           activeIcon: Icons.notifications_rounded,
-                          isSelected: nav.index == 4,
-                          onTap: () => nav.setIndex(4),
+                          isSelected: nav.index == 3,
+                          onTap: () => nav.setIndex(3),
                           badgeCount: context
                               .watch<NotificationProvider>()
                               .unreadCount,
@@ -203,8 +195,8 @@ class _MainNavigationState extends State<MainNavigation> {
                           icon: Icons.person_outlined,
                           activeIcon: Icons.person_rounded,
                           imageUrl: profileProvider.profile?.profilePicture,
-                          isSelected: nav.index == 5,
-                          onTap: () => nav.setIndex(5),
+                          isSelected: nav.index == 4,
+                          onTap: () => nav.setIndex(4),
                         ),
                       ],
                     ),

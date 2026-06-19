@@ -7,7 +7,18 @@ import 'upload_document_page.dart';
 import 'document_detail_sheet.dart';
 
 class MyDocumentsPage extends StatefulWidget {
-  const MyDocumentsPage({super.key});
+  /// When true, renders body-only (no Scaffold/AppBar) so it can live inside a
+  /// TabBarView; the app-bar upload action becomes an inline button.
+  final bool embedded;
+
+  /// Extra bottom padding so the list clears a floating bottom nav bar.
+  final double contentBottomInset;
+
+  const MyDocumentsPage({
+    super.key,
+    this.embedded = false,
+    this.contentBottomInset = 0,
+  });
 
   @override
   State<MyDocumentsPage> createState() => _MyDocumentsPageState();
@@ -22,10 +33,55 @@ class _MyDocumentsPageState extends State<MyDocumentsPage> {
     });
   }
 
+  void _openUpload() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const UploadDocumentPage()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final provider = context.watch<DocumentProvider>();
+
+    final content = provider.isLoadingMyDocs
+        ? _buildLoadingState(theme)
+        : provider.myDocuments.isEmpty
+        ? _buildEmptyState(theme)
+        : _buildDocumentList(provider.myDocuments, theme);
+
+    if (widget.embedded) {
+      return Column(
+        children: [
+          // Inline upload action (replaces the removed FAB / app-bar button).
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: OutlinedButton.icon(
+                onPressed: _openUpload,
+                icon: const Icon(Icons.upload_file, size: 18),
+                label: Text(
+                  "Upload PDF",
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: theme.colorScheme.primary,
+                  side: BorderSide(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.5),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(child: content),
+        ],
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -37,19 +93,12 @@ class _MyDocumentsPageState extends State<MyDocumentsPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add_circle_outline, size: 28),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const UploadDocumentPage()),
-            ),
+            onPressed: _openUpload,
           ),
           const SizedBox(width: 8),
         ],
       ),
-      body: provider.isLoadingMyDocs
-          ? _buildLoadingState(theme)
-          : provider.myDocuments.isEmpty
-          ? _buildEmptyState(theme)
-          : _buildDocumentList(provider.myDocuments, theme),
+      body: content,
     );
   }
 
@@ -133,7 +182,7 @@ class _MyDocumentsPageState extends State<MyDocumentsPage> {
 
   Widget _buildDocumentList(List<Document> docs, ThemeData theme) {
     return ListView.builder(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + widget.contentBottomInset),
       itemCount: docs.length,
       itemBuilder: (context, index) {
         final doc = docs[index];
@@ -194,52 +243,52 @@ class _MyDocumentsPageState extends State<MyDocumentsPage> {
                         ],
                       ),
                     ),
-                    PopupMenuButton<String>(
-                      icon: Icon(
-                        Icons.more_vert_rounded,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      onSelected: (value) {
-                        if (value == 'edit') {
-                          _showEditSheet(doc);
-                        } else {
-                          _toggleStatus(doc);
-                        }
-                      },
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      itemBuilder: (context) => [
-                        const PopupMenuItem(
-                          value: 'edit',
-                          child: Row(
-                            children: [
-                              Icon(Icons.edit_outlined, size: 20),
-                              SizedBox(width: 12),
-                              Text("Edit"),
-                            ],
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'toggle',
-                          child: Row(
-                            children: [
-                              Icon(
-                                doc.isActive
-                                    ? Icons.toggle_off_outlined
-                                    : Icons.toggle_on_outlined,
-                                size: 22,
-                                color: doc.isActive
-                                    ? Colors.blueGrey
-                                    : Colors.green,
-                              ),
-                              const SizedBox(width: 12),
-                              Text(doc.isActive ? "Disable" : "Enable"),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                    // PopupMenuButton<String>(
+                    //   icon: Icon(
+                    //     Icons.more_vert_rounded,
+                    //     color: theme.colorScheme.onSurfaceVariant,
+                    //   ),
+                    //   onSelected: (value) {
+                    //     if (value == 'edit') {
+                    //       _showEditSheet(doc);
+                    //     } else {
+                    //       _toggleStatus(doc);
+                    //     }
+                    //   },
+                    //   shape: RoundedRectangleBorder(
+                    //     borderRadius: BorderRadius.circular(16),
+                    //   ),
+                    //   itemBuilder: (context) => [
+                    //     const PopupMenuItem(
+                    //       value: 'edit',
+                    //       child: Row(
+                    //         children: [
+                    //           Icon(Icons.edit_outlined, size: 20),
+                    //           SizedBox(width: 12),
+                    //           Text("Edit"),
+                    //         ],
+                    //       ),
+                    //     ),
+                    //     PopupMenuItem(
+                    //       value: 'toggle',
+                    //       child: Row(
+                    //         children: [
+                    //           Icon(
+                    //             doc.isActive
+                    //                 ? Icons.toggle_off_outlined
+                    //                 : Icons.toggle_on_outlined,
+                    //             size: 22,
+                    //             color: doc.isActive
+                    //                 ? Colors.blueGrey
+                    //                 : Colors.green,
+                    //           ),
+                    //           const SizedBox(width: 12),
+                    //           Text(doc.isActive ? "Disable" : "Enable"),
+                    //         ],
+                    //       ),
+                    //     ),
+                    //   ],
+                    // ),
                   ],
                 ),
               ),

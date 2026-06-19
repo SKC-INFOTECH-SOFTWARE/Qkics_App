@@ -14,10 +14,15 @@ class KnowledgeHubPage extends StatefulWidget {
   final bool embedded;
   final TabController? tabController;
 
+  /// Extra bottom padding so the FAB and list content clear a floating bottom
+  /// nav bar drawn over this page (used when hosted in the main shell).
+  final double contentBottomInset;
+
   const KnowledgeHubPage({
     super.key,
     this.embedded = false,
     this.tabController,
+    this.contentBottomInset = 0,
   });
 
   @override
@@ -63,9 +68,11 @@ class _KnowledgeHubPageState extends State<KnowledgeHubPage> {
               : docs.isEmpty
               ? _buildEmptyState(theme, "No documents available")
               : ListView.separated(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    8,
+                    16,
+                    8 + widget.contentBottomInset,
                   ),
                   itemCount: docs.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
@@ -83,7 +90,7 @@ class _KnowledgeHubPageState extends State<KnowledgeHubPage> {
         : provider.downloadHistory.isEmpty
         ? _buildEmptyState(theme, "You haven't downloaded any documents yet")
         : ListView.separated(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + widget.contentBottomInset),
             itemCount: provider.downloadHistory.length,
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
@@ -92,31 +99,49 @@ class _KnowledgeHubPageState extends State<KnowledgeHubPage> {
             },
           );
 
+    final myUploadsTab = MyDocumentsPage(
+      embedded: true,
+      contentBottomInset: widget.contentBottomInset,
+    );
+
     if (widget.embedded) {
       return Scaffold(
         backgroundColor: Colors.transparent,
-        body: TabBarView(
-          controller: widget.tabController,
-          children: [exploreTab, historyTab],
-        ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const MyDocumentsPage()),
-          ),
-          elevation: 4,
-          backgroundColor: theme.colorScheme.primary,
-          label: Text(
-            "My Uploads",
-            style: GoogleFonts.inter(fontWeight: FontWeight.bold),
-          ),
-          icon: const Icon(Icons.upload_file),
+        body: Column(
+          children: [
+            // Explore / My Downloads / My Uploads sub-tabs live here (right
+            // above their content) instead of in the host app bar.
+            if (widget.tabController != null)
+              TabBar(
+                controller: widget.tabController,
+                indicatorWeight: 3,
+                indicatorSize: TabBarIndicatorSize.label,
+                labelStyle: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                unselectedLabelStyle: GoogleFonts.inter(
+                  fontWeight: FontWeight.normal,
+                ),
+                labelColor: theme.colorScheme.primary,
+                unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
+                indicatorColor: theme.colorScheme.primary,
+                tabs: const [
+                  Tab(text: "Explore"),
+                  Tab(text: "My Downloads"),
+                  Tab(text: "My Uploads"),
+                ],
+              ),
+            Expanded(
+              child: TabBarView(
+                controller: widget.tabController,
+                children: [exploreTab, historyTab, myUploadsTab],
+              ),
+            ),
+          ],
         ),
       );
     }
 
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: Text(
@@ -133,23 +158,11 @@ class _KnowledgeHubPageState extends State<KnowledgeHubPage> {
             tabs: const [
               Tab(text: "Explore"),
               Tab(text: "My Downloads"),
+              Tab(text: "My Uploads"),
             ],
           ),
         ),
-        body: TabBarView(children: [exploreTab, historyTab]),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const MyDocumentsPage()),
-          ),
-          elevation: 4,
-          backgroundColor: theme.colorScheme.primary,
-          label: Text(
-            "My Uploads",
-            style: GoogleFonts.inter(fontWeight: FontWeight.bold),
-          ),
-          icon: const Icon(Icons.upload_file),
-        ),
+        body: TabBarView(children: [exploreTab, historyTab, myUploadsTab]),
       ),
     );
   }
@@ -280,7 +293,7 @@ class _KnowledgeHubPageState extends State<KnowledgeHubPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               color: theme.colorScheme.primary.withValues(alpha: 0.05),
               shape: BoxShape.circle,
@@ -322,18 +335,35 @@ class _DocumentCard extends StatelessWidget {
     final isPaid = document.accessType == "PAID";
 
     return InkWell(
-      onTap: () {
-        showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          barrierColor: Colors.black54,
-          builder: (_) => DocumentDetailSheet(document: document),
-        );
+      onTap: () async {
+        final provider = context.read<DocumentProvider>();
+        final navigator = Navigator.of(context);
+
+        // If the document is already downloaded, open it directly instead of
+        // showing the download sheet.
+        final localPath = await provider.getLocalPath(document.title);
+        if (!context.mounted) return;
+
+        if (localPath != null) {
+          navigator.push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  PdfViewerPage(filePath: localPath, title: document.title),
+            ),
+          );
+        } else {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            barrierColor: Colors.black54,
+            builder: (_) => DocumentDetailSheet(document: document),
+          );
+        }
       },
       borderRadius: BorderRadius.circular(20),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(20),
@@ -417,7 +447,7 @@ class _DocumentCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
-              ),
+               ),
             ),
             const SizedBox(width: 8),
             Icon(
@@ -430,6 +460,7 @@ class _DocumentCard extends StatelessWidget {
     );
   }
 }
+
 
 class _CompactBadge extends StatelessWidget {
   final String label;

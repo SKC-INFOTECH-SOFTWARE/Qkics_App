@@ -15,7 +15,16 @@ class CreatePostPage extends StatefulWidget {
   final Post? postToEdit;
   final ValueChanged<bool>? onBarsVisibilityChanged;
 
-  const CreatePostPage({super.key, this.postToEdit, this.onBarsVisibilityChanged});
+  /// Pre-selects the "Knowledge Hub" option when creating a new post (e.g. when
+  /// opened from the Knowledge Hub).
+  final bool initialKnowledgeHub;
+
+  const CreatePostPage({
+    super.key,
+    this.postToEdit,
+    this.onBarsVisibilityChanged,
+    this.initialKnowledgeHub = false,
+  });
 
   @override
   State<CreatePostPage> createState() => _CreatePostPageState();
@@ -46,7 +55,11 @@ class _CreatePostPageState extends State<CreatePostPage> {
   void initState() {
     super.initState();
     _isEditMode = widget.postToEdit != null;
-    if (_isEditMode) _loadExistingPost();
+    if (_isEditMode) {
+      _loadExistingPost();
+    } else {
+      _isKnowledgeHub = widget.initialKnowledgeHub;
+    }
     _loadTags();
 
     _titleController.addListener(() => setState(() {}));
@@ -242,9 +255,6 @@ class _CreatePostPageState extends State<CreatePostPage> {
         // 🔥 Clear form first
         _resetForm();
 
-        // 🔥 Switch to Home tab
-        nav.goHome();
-
         // 🔥 Refresh posts
         Future.microtask(() {
           api.fetchPosts(forceRefresh: true);
@@ -261,8 +271,12 @@ class _CreatePostPageState extends State<CreatePostPage> {
           ),
         );
 
-        if (_isEditMode && Navigator.of(context).canPop()) {
+        // Presented as a pushed route — return to where we came from.
+        // Fall back to the Home tab if there's nothing to pop.
+        if (Navigator.of(context).canPop()) {
           Navigator.of(context).pop(true);
+        } else {
+          nav.goHome();
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -37,6 +37,19 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage>
     );
   }
 
+  // Pull-to-refresh: fetch first (while the indicator spins), then swap in the
+  // resolved future so the FutureBuilder skips its waiting/shimmer state.
+  Future<void> _onRefreshPosts() async {
+    final future = context.read<CompanyProvider>().fetchCompanyPosts(
+      widget.company.id,
+    );
+    await future;
+    if (!mounted) return;
+    setState(() {
+      _postsFuture = future;
+    });
+  }
+
   @override
   void dispose() {
     _tabController.dispose();
@@ -280,12 +293,16 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage>
   Widget _buildPostsTab(bool canManage) {
     final theme = Theme.of(context);
 
-    return FutureBuilder<List<CompanyPost>>(
+    return RefreshIndicator(
+      onRefresh: _onRefreshPosts,
+      color: theme.colorScheme.primary,
+      child: FutureBuilder<List<CompanyPost>>(
       future: _postsFuture,
       builder: (context, snapshot) {
         // ── Loading ───────────────────────────────────────────
         if (snapshot.connectionState == ConnectionState.waiting) {
           return ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
             itemCount: 3,
             itemBuilder: (_, __) => const PostShimmer(),
@@ -294,49 +311,58 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage>
 
         // ── Error ─────────────────────────────────────────────
         if (snapshot.hasError) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
-                const SizedBox(height: 12),
-                Text("Couldn't load posts.", style: theme.textTheme.bodyMedium),
-                const SizedBox(height: 12),
-                OutlinedButton(
-                  onPressed: () => setState(() => _loadPosts()),
-                  child: const Text("Retry"),
-                ),
-              ],
-            ),
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
+                  const SizedBox(height: 12),
+                  Text("Couldn't load posts.", style: theme.textTheme.bodyMedium),
+                  const SizedBox(height: 12),
+                  OutlinedButton(
+                    onPressed: () => setState(() => _loadPosts()),
+                    child: const Text("Retry"),
+                  ),
+                ],
+              ),
+            ],
           );
         }
 
         // ── Empty ─────────────────────────────────────────────
         final posts = snapshot.data ?? [];
         if (posts.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.feed_outlined,
-                  size: 60,
-                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  "No posts yet.",
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.feed_outlined,
+                    size: 60,
+                    color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                   ),
-                ),
-              ],
-            ),
+                  const SizedBox(height: 16),
+                  Text(
+                    "No posts yet.",
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           );
         }
 
         // ── Feed ──────────────────────────────────────────────
         return ListView.builder(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.only(
             left: 2,
             right: 2,
@@ -399,6 +425,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage>
           },
         );
       },
+      ),
     );
   }
 

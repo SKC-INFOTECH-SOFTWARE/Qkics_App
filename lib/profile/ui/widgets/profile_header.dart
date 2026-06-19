@@ -24,6 +24,10 @@ class ProfileHeader extends StatelessWidget {
   final VoidCallback? onViewSlotsTap;
   final VoidCallback? onCreateSlotsTap;
 
+  /// In public view: a short role highlight shown under the username —
+  /// primary expertise for experts, investor type for investors.
+  final String? publicRoleHighlight;
+
   const ProfileHeader({
     super.key,
     required this.profile,
@@ -31,6 +35,7 @@ class ProfileHeader extends StatelessWidget {
     this.onViewSlotsTap,
     this.onCreateSlotsTap,
     this.isPublicView = false,
+    this.publicRoleHighlight,
   });
 
   @override
@@ -237,12 +242,22 @@ class ProfileHeader extends StatelessWidget {
                             ),
                           ),
                           if (effectiveType != ProfileType.normal &&
-                              isApproved) ...[
+                              (isApproved || isPublicView)) ...[
                             const SizedBox(width: 8),
                             _userTypeBadge(theme, effectiveType),
                           ],
                         ],
                       ),
+
+                      // ---------- ROLE HIGHLIGHT (public view) ----------
+                      // Primary expertise for experts, investor type for
+                      // investors. Nothing for normal users.
+                      if (isPublicView &&
+                          effectiveType != ProfileType.normal &&
+                          (publicRoleHighlight?.trim().isNotEmpty ?? false)) ...[
+                        const SizedBox(height: 6),
+                        _roleHighlight(theme, effectiveType, publicRoleHighlight!),
+                      ],
 
                       const SizedBox(height: 12),
                       if (!isPublicView) _getPremiumButton(context, theme),
@@ -359,6 +374,43 @@ class ProfileHeader extends StatelessWidget {
             ),
           ),
         ],
+      ],
+    );
+  }
+
+  Widget _roleHighlight(ThemeData theme, ProfileType type, String value) {
+    final IconData icon = type == ProfileType.investor
+        ? Icons.account_balance_outlined
+        : Icons.workspace_premium_outlined;
+    final String label = type == ProfileType.investor
+        ? 'Investor type'
+        : 'Primary expertise';
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 15, color: theme.colorScheme.primary),
+        const SizedBox(width: 6),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                height: 1.3,
+              ),
+              children: [
+                TextSpan(text: '$label: '),
+                TextSpan(
+                  text: value,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }

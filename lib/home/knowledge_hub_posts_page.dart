@@ -11,7 +11,12 @@ import 'package:q_kics/documents/ui/knowledge_hub_page.dart';
 /// A controller that holds both the outer (Hub Posts / Documents) tab index
 /// and a page-level state for the documents sub-tabs.
 class KnowledgeHubPostsPage extends StatefulWidget {
-  const KnowledgeHubPostsPage({super.key});
+  /// When true the page is hosted inside the main bottom-nav shell: it drops its
+  /// own back button and floating bottom bar (those belong to the shell) and
+  /// shows an inline Hub Posts / Documents switch instead.
+  final bool embedded;
+
+  const KnowledgeHubPostsPage({super.key, this.embedded = false});
 
   @override
   State<KnowledgeHubPostsPage> createState() => _KnowledgeHubPostsPageState();
@@ -36,7 +41,7 @@ class _KnowledgeHubPostsPageState extends State<KnowledgeHubPostsPage>
   void initState() {
     super.initState();
     _scrollController = ScrollController();
-    _docTabController = TabController(length: 2, vsync: this);
+    _docTabController = TabController(length: 3, vsync: this);
     _loadInitialData();
     _scrollController.addListener(_scrollListener);
   }
@@ -70,23 +75,6 @@ class _KnowledgeHubPostsPageState extends State<KnowledgeHubPostsPage>
   }
 
   // ────────────────────────────────────────────────────────────────────────────
-  // AppBar bottom: only visible on the Documents tab
-  PreferredSizeWidget? _buildAppBarBottom(ColorScheme cs) {
-    if (_outerIndex != 1) return null;
-    return TabBar(
-      controller: _docTabController,
-      dividerColor: Colors.transparent,
-      indicatorColor: cs.primary,
-      labelColor: cs.primary,
-      unselectedLabelColor: cs.onSurfaceVariant,
-      tabs: const [
-        Tab(text: 'Explore'),
-        Tab(text: 'My Downloads'),
-      ],
-    );
-  }
-
-  // ────────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -116,10 +104,13 @@ class _KnowledgeHubPostsPageState extends State<KnowledgeHubPostsPage>
       appBar: AppBar(
         backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false,
+        leading: widget.embedded
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new),
+                onPressed: () => Navigator.pop(context),
+              ),
         title: isDocTab
             ? Text(
                 'Document Hub',
@@ -178,18 +169,31 @@ class _KnowledgeHubPostsPageState extends State<KnowledgeHubPostsPage>
                     color: colorScheme.primary,
                   ),
                   tooltip: 'Add Post',
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const CreatePostPage()),
-                  ),
+                  onPressed: () async {
+                    final api = context.read<ApiProvider>();
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            const CreatePostPage(initialKnowledgeHub: true),
+                      ),
+                    );
+                    // Refresh the Knowledge Hub feed after returning so a newly
+                    // created post shows up.
+                    await api.fetchKnowledgeHubPosts(forceRefresh: true);
+                  },
                 ),
               ],
-        // Document Hub sub-tabs only on the Documents tab
-        bottom: _buildAppBarBottom(colorScheme),
       ),
 
       // ── Body ───────────────────────────────────────────────────────────────
-      body: IndexedStack(
+      body: Column(
+        children: [
+          // Inline Hub Posts / Documents switch (only when embedded as a tab,
+          // since the standalone page uses its own floating bottom bar).
+          if (widget.embedded) _outerSwitch(colorScheme),
+          Expanded(
+            child: IndexedStack(
         index: _outerIndex,
         children: [
           // ── Tab 0: Hub Posts feed ─────────────────────────────────────────
@@ -281,12 +285,22 @@ class _KnowledgeHubPostsPageState extends State<KnowledgeHubPostsPage>
           ),
 
           // ── Tab 1: Document Hub (embedded — no extra Scaffold/AppBar) ─────
-          KnowledgeHubPage(embedded: true, tabController: _docTabController),
+          KnowledgeHubPage(
+            embedded: true,
+            tabController: _docTabController,
+            // Clear the shell's floating nav bar when hosted in the bottom nav.
+            contentBottomInset: widget.embedded ? 100 : 0,
+          ),
+        ],
+      ),
+          ),
         ],
       ),
 
-      // ── Floating bottom nav bar ────────────────────────────────────────────
-      bottomNavigationBar: Padding(
+      // ── Floating bottom nav bar (standalone only) ──────────────────────────
+      bottomNavigationBar: widget.embedded
+          ? null
+          : Padding(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(30),
@@ -330,6 +344,62 @@ class _KnowledgeHubPostsPageState extends State<KnowledgeHubPostsPage>
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// Inline segmented switch shown at the top when [widget.embedded] is true.
+  Widget _outerSwitch(ColorScheme cs) {
+    Widget seg(String label, IconData icon, int index) {
+      final isActive = _outerIndex == index;
+      return Expanded(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => setState(() => _outerIndex = index),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              color: isActive ? cs.primary : Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: 18,
+                  color: isActive ? cs.onPrimary : cs.onSurfaceVariant,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: isActive ? cs.onPrimary : cs.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          seg('Hub Posts', Icons.forum_outlined, 0),
+          const SizedBox(width: 4),
+          seg('Documents', Icons.menu_book_outlined, 1),
+        ],
       ),
     );
   }

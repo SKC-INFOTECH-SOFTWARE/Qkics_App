@@ -795,16 +795,25 @@ class _SessionCardState extends ConsumerState<_SessionCard> {
     }
 
     if (callRoomId == null || callRoomId.isEmpty) {
+      // The meeting can only be created once the scheduled start time arrives.
+      final start = widget.booking.startDatetime.toLocal();
+      final hasStarted = !DateTime.now().isBefore(start);
+      final startLabel = DateFormat('MMM dd, hh:mm a').format(start);
+
       return _CallButton(
-        icon: _isCreating ? null : Icons.video_call_rounded,
-        label: _isCreating ? 'Creating...' : 'Create Meeting',
+        icon: _isCreating
+            ? null
+            : (hasStarted ? Icons.video_call_rounded : Icons.lock_clock_rounded),
+        label: _isCreating
+            ? 'Creating...'
+            : (hasStarted ? 'Create Meeting' : 'Available at $startLabel'),
         gradient: const LinearGradient(
           colors: [Color(0xFF6C63FF), Color(0xFF4A90E2)],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
         isLoading: _isCreating,
-        onPressed: _isCreating ? null : _createMeeting,
+        onPressed: (_isCreating || !hasStarted) ? null : _createMeeting,
       );
     }
 

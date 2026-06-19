@@ -63,7 +63,13 @@ class _PostCardState extends State<PostCard>
   }
 
   void _detectImageRatio(String imageUrl) {
-    final provider = CachedNetworkImageProvider(imageUrl);
+    // Decode a tiny thumbnail just to read the aspect ratio — decoding the
+    // full-resolution image here (once per card while scrolling) is what froze
+    // the feed. ResizeImage keeps the aspect ratio when only width is given.
+    final provider = ResizeImage(
+      CachedNetworkImageProvider(imageUrl),
+      width: 64,
+    );
     final stream = provider.resolve(ImageConfiguration.empty);
     late ImageStreamListener listener;
     listener = ImageStreamListener(
@@ -679,51 +685,32 @@ class _PostCardState extends State<PostCard>
                   ),
                 ],
               )
-            : Stack(
-                fit: StackFit.expand,
-                children: [
-                  // Blurred backdrop — fills any aspect-ratio gap during load
-                  // and gives the Instagram "soft edge" look.
-                  IgnorePointer(
-                    child: ImageFiltered(
-                      imageFilter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                      child: CachedNetworkImage(
-                        imageUrl: media.file,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        height: double.infinity,
-                      ),
+            // Cover-fit fills the frame completely, so no blurred backdrop is
+            // needed behind it.
+            : CachedNetworkImage(
+                imageUrl: media.file,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+                memCacheWidth: (MediaQuery.of(context).size.width *
+                        MediaQuery.of(context).devicePixelRatio)
+                    .toInt()
+                    .clamp(800, 2160),
+                placeholder: (context, url) => Shimmer.fromColors(
+                  baseColor: Colors.grey[300]!,
+                  highlightColor: Colors.grey[100]!,
+                  child: Container(color: Colors.white),
+                ),
+                errorWidget: (context, url, error) => Container(
+                  color: Colors.grey[200],
+                  child: const Center(
+                    child: Icon(
+                      Icons.broken_image_outlined,
+                      size: 50,
+                      color: Colors.grey,
                     ),
                   ),
-                  Container(color: Colors.black.withValues(alpha: 0.08)),
-                  // Main image — cover fills the frame completely once the
-                  // aspect ratio is resolved.
-                  CachedNetworkImage(
-                    imageUrl: media.file,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: double.infinity,
-                    memCacheWidth: (MediaQuery.of(context).size.width *
-                            MediaQuery.of(context).devicePixelRatio)
-                        .toInt()
-                        .clamp(800, 2160),
-                    placeholder: (context, url) => Shimmer.fromColors(
-                      baseColor: Colors.grey[300]!,
-                      highlightColor: Colors.grey[100]!,
-                      child: Container(color: Colors.white),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: Colors.grey[200],
-                      child: const Center(
-                        child: Icon(
-                          Icons.broken_image_outlined,
-                          size: 50,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
       ),
     );

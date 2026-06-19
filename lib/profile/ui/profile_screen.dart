@@ -136,6 +136,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           return DefaultTabController(
             length: tabCount,
             child: RefreshIndicator(
+              // NestedScrollView's body (the TabBarView lists) emits scroll
+              // notifications at depth 2, not 0. Without this the pull-down
+              // overscroll is ignored and the indicator never shows.
+              notificationPredicate: (notification) => notification.depth == 2,
               onRefresh: () async {
                 if (!mounted) return;
                 await context.read<ProfileProvider>().loadProfile(force: true);
