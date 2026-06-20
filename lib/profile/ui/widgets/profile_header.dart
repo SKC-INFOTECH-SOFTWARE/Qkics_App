@@ -205,7 +205,7 @@ class ProfileHeader extends StatelessWidget {
                               style: theme.textTheme.headlineSmall?.copyWith(
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: -0.5,
-                                fontSize: 22,
+                                fontSize: 18,
                                 height: 1.2,
                               ),
                             ),

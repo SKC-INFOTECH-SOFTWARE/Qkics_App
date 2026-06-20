@@ -446,7 +446,7 @@ class _HomeSideMenuState extends State<HomeSideMenu> {
                     color: cs.primary.withValues(alpha: 0.15),
                   ),
                   child: Icon(
-                    Icons.workspace_premium,
+                    Icons.star_outline ,
                     size: 20 * scale,
                     color: cs.primary,
                   ),

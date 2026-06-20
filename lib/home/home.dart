@@ -87,8 +87,16 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _onRefresh() async {
     final api = Provider.of<ApiProvider>(context, listen: false);
-    await api.fetchPosts(forceRefresh: true);
-    api.getCurrentUser();
+
+    // Drop the in-memory image cache so any updated avatars / post images
+    // are re-loaded instead of served from the stale live cache.
+    PaintingBinding.instance.imageCache.clear();
+    PaintingBinding.instance.imageCache.clearLiveImages();
+
+    await Future.wait([
+      api.fetchPosts(forceRefresh: true),
+      api.getCurrentUser(forceRefresh: true),
+    ]);
   }
 
   @override

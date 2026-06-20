@@ -95,7 +95,7 @@ class _MainNavigationState extends State<MainNavigation> {
         curve: Curves.easeOutCubic,
         offset: _isBottomBarVisible ? Offset.zero : const Offset(0, 2),
         child: Padding(
-          padding: EdgeInsets.fromLTRB(paddingX, 0, paddingX, 6),
+          padding: EdgeInsets.fromLTRB(paddingX, 0, paddingX,6),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(30), // Pill shape
             child: BackdropFilter(

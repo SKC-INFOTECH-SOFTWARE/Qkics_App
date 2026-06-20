@@ -42,7 +42,7 @@ class _ActiveSubscriptionPageState extends State<ActiveSubscriptionPage> {
         ),
         title: Text(
           "My Subscription",
-          style: theme.textTheme.titleLarge?.copyWith(
+          style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -209,10 +209,10 @@ class _ActiveSubscriptionPageState extends State<ActiveSubscriptionPage> {
             // ================= SUBSCRIPTION INFO =================
             _buildSubscriptionInfo(subscription, theme, cs),
 
-            const SizedBox(height: 32),
+            // const SizedBox(height: 32),
 
-            // ================= UPGRADE BUTTON =================
-            _buildUpgradeButton(theme, cs),
+            // // ================= UPGRADE BUTTON =================
+            // _buildUpgradeButton(theme, cs),
           ],
         ),
       ),
